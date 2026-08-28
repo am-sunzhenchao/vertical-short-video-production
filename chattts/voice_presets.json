@@ -1,0 +1,57 @@
+{
+  "_comment": "ChatTTS 音色预设库。每个 key 对应 scenes.json 里的 ttsStyle 字段。",
+  "_speaker_dir": "/Users/sunzhenchao/ChatTTS/speakers/",
+  "_params": {
+    "speaker_file": "音色向量文件名（相对于 _speaker_dir）",
+    "temperature": "随机性，越低越稳定，越高越多变",
+    "top_P": "采样概率截断",
+    "top_K": "采样候选数",
+    "repetition_penalty": "重复惩罚，越高越不重复",
+    "prompt": "[speed_N] 语速 1-9，数字越大越快",
+    "skip_refine": "true=跳过文本精炼（稳定快速）；false=开启精炼（更口语化自然）",
+    "refine_prompt": "精炼提示词，仅 skip_refine=false 时生效：[oral_N][laugh_N][break_N]"
+  },
+
+  "通用命名风格": {
+    "_note": "泛用风格，音色无固定倾向，适合不确定场景"
+  },
+  "calm_male":              {"speaker_file": "1_calm_male_v2.txt",                "temperature": 0.1,  "top_P": 0.3, "top_K": 5,  "repetition_penalty": 1.1,  "skip_refine": true},
+  "energetic_male":         {"speaker_file": "2_energetic_male_v2.txt",           "temperature": 0.5,  "top_P": 0.7, "top_K": 20, "repetition_penalty": 1.05, "skip_refine": true},
+  "gentle_female":          {"speaker_file": "3_gentle_female_v2.txt",            "temperature": 0.3,  "top_P": 0.5, "top_K": 10, "repetition_penalty": 1.05, "skip_refine": true},
+  "gentle_male":            {"speaker_file": "3_gentle_male_v2.txt",              "temperature": 0.3,  "top_P": 0.5, "top_K": 10, "repetition_penalty": 1.05, "skip_refine": true},
+  "deep_voice":             {"speaker_file": "4_deep_voice_v2.txt",               "temperature": 0.1,  "top_P": 0.3, "top_K": 5,  "repetition_penalty": 1.3,  "skip_refine": true},
+  "deep_male":              {"speaker_file": "4_deep_male_v2.txt",                "temperature": 0.1,  "top_P": 0.3, "top_K": 5,  "repetition_penalty": 1.3,  "skip_refine": true},
+  "natural_conversational": {"speaker_file": "5_natural_conversational_v2.txt",   "temperature": 0.3,  "top_P": 0.5, "top_K": 10, "repetition_penalty": 1.05, "skip_refine": true},
+  "jsfx_female":            {"speaker_file": "jsfx_female.txt",                   "temperature": 0.3,  "top_P": 0.5, "top_K": 10, "repetition_penalty": 1.05, "prompt": "[speed_5]", "skip_refine": false, "refine_prompt": "[oral_4][laugh_0][break_3]"},
+
+  "Demo音色库": {
+    "_note": "来自 gen_demos.py / gen_demos2.py，参数与 demo MP3 完全一致可复现。试听：/Users/sunzhenchao/Desktop/工作文档/self/素材/chattts/audios/{key}.mp3"
+  },
+  "01_dushu_female_seed999":    {"speaker_file": "01_dushu_female_seed999.txt",    "temperature": 0.1,  "top_P": 0.3, "top_K": 5,  "repetition_penalty": 1.1,  "prompt": "[speed_3]", "skip_refine": true},
+  "01_dushu_male_seed55":       {"speaker_file": "01_dushu_male_seed55.txt",       "temperature": 0.1,  "top_P": 0.3, "top_K": 5,  "repetition_penalty": 1.1,  "prompt": "[speed_3]", "skip_refine": true},
+  "02_sanwen_female_seed44":    {"speaker_file": "02_sanwen_female_seed44.txt",    "temperature": 0.15, "top_P": 0.4, "top_K": 8,  "repetition_penalty": 1.1,  "prompt": "[speed_2]", "skip_refine": true},
+  "02_sanwen_male_seed666":     {"speaker_file": "02_sanwen_male_seed666.txt",     "temperature": 0.15, "top_P": 0.4, "top_K": 8,  "repetition_penalty": 1.1,  "prompt": "[speed_2]", "skip_refine": true},
+  "03_jsfx_female_seed88":      {"speaker_file": "03_jsfx_female_seed88.txt",      "temperature": 0.3,  "top_P": 0.5, "top_K": 10, "repetition_penalty": 1.05, "prompt": "[speed_5]", "skip_refine": false, "refine_prompt": "[oral_4][laugh_0][break_3]"},
+  "03_jsfx_male_seed99":        {"speaker_file": "03_jsfx_male_seed99.txt",        "temperature": 0.3,  "top_P": 0.5, "top_K": 10, "repetition_penalty": 1.05, "prompt": "[speed_5]", "skip_refine": false, "refine_prompt": "[oral_4][laugh_0][break_3]"},
+  "04_jsjs_female_seed44":      {"speaker_file": "04_jsjs_female_seed44.txt",      "temperature": 0.2,  "top_P": 0.4, "top_K": 8,  "repetition_penalty": 1.05, "prompt": "[speed_5]", "skip_refine": true},
+  "04_jsjs_male_seed222":       {"speaker_file": "04_jsjs_male_seed222.txt",       "temperature": 0.2,  "top_P": 0.4, "top_K": 8,  "repetition_penalty": 1.05, "prompt": "[speed_5]", "skip_refine": true},
+  "jsjs_male_seed222":          {"speaker_file": "04_jsjs_male_seed222.txt",       "temperature": 0.2,  "top_P": 0.4, "top_K": 8,  "repetition_penalty": 1.05, "prompt": "[speed_5]", "skip_refine": true},
+  "05_fengjing_female_seed777": {"speaker_file": "05_fengjing_female_seed777.txt", "temperature": 0.2,  "top_P": 0.4, "top_K": 8,  "repetition_penalty": 1.1,  "prompt": "[speed_3]", "skip_refine": true},
+  "05_fengjing_male_seed888":   {"speaker_file": "05_fengjing_male_seed888.txt",   "temperature": 0.2,  "top_P": 0.4, "top_K": 8,  "repetition_penalty": 1.1,  "prompt": "[speed_3]", "skip_refine": true},
+  "06_kepu_female_seed555":     {"speaker_file": "06_kepu_female_seed555.txt",     "temperature": 0.3,  "top_P": 0.6, "top_K": 15, "repetition_penalty": 1.05, "prompt": "[speed_6]", "skip_refine": false, "refine_prompt": "[oral_2][laugh_0][break_3]"},
+  "06_kepu_male_seed333":       {"speaker_file": "06_kepu_male_seed333.txt",       "temperature": 0.3,  "top_P": 0.6, "top_K": 15, "repetition_penalty": 1.05, "prompt": "[speed_6]", "skip_refine": false, "refine_prompt": "[oral_2][laugh_0][break_3]"},
+  "07_gaoxiao_female_seed88":   {"speaker_file": "07_gaoxiao_female_seed88.txt",   "temperature": 0.5,  "top_P": 0.7, "top_K": 20, "repetition_penalty": 1.0,  "prompt": "[speed_7]", "skip_refine": false, "refine_prompt": "[oral_6][laugh_1][break_2]"},
+  "07_gaoxiao_male_seed77":     {"speaker_file": "07_gaoxiao_male_seed77.txt",     "temperature": 0.5,  "top_P": 0.7, "top_K": 20, "repetition_penalty": 1.0,  "prompt": "[speed_7]", "skip_refine": false, "refine_prompt": "[oral_6][laugh_1][break_2]"},
+  "08_yingshi_female_seed3005": {"speaker_file": "08_yingshi_female_seed3005.txt", "temperature": 0.3,  "top_P": 0.5, "top_K": 10, "repetition_penalty": 1.05, "prompt": "[speed_7]", "skip_refine": false, "refine_prompt": "[oral_3][laugh_0][break_2]"},
+  "08_yingshi_male_seed3015":   {"speaker_file": "08_yingshi_male_seed3015.txt",   "temperature": 0.3,  "top_P": 0.5, "top_K": 10, "repetition_penalty": 1.05, "prompt": "[speed_7]", "skip_refine": false, "refine_prompt": "[oral_3][laugh_0][break_2]"},
+  "09_qinggan_female_seed3003": {"speaker_file": "09_qinggan_female_seed3003.txt", "temperature": 0.15, "top_P": 0.4, "top_K": 8,  "repetition_penalty": 1.1,  "prompt": "[speed_2]", "skip_refine": true},
+  "09_qinggan_male_seed3001":   {"speaker_file": "09_qinggan_male_seed3001.txt",   "temperature": 0.15, "top_P": 0.4, "top_K": 8,  "repetition_penalty": 1.1,  "prompt": "[speed_2]", "skip_refine": true},
+  "10_xuanyi_female_seed3016":  {"speaker_file": "10_xuanyi_female_seed3016.txt",  "temperature": 0.1,  "top_P": 0.3, "top_K": 5,  "repetition_penalty": 1.3,  "prompt": "[speed_3]", "skip_refine": true},
+  "10_xuanyi_male_seed3008":    {"speaker_file": "10_xuanyi_male_seed3008.txt",    "temperature": 0.1,  "top_P": 0.3, "top_K": 5,  "repetition_penalty": 1.3,  "prompt": "[speed_3]", "skip_refine": true},
+  "11_daihuo_female_seed3011":  {"speaker_file": "11_daihuo_female_seed3011.txt",  "temperature": 0.5,  "top_P": 0.7, "top_K": 20, "repetition_penalty": 1.0,  "prompt": "[speed_9]", "skip_refine": false, "refine_prompt": "[oral_5][laugh_0][break_1]"},
+  "11_daihuo_male_seed3002":    {"speaker_file": "11_daihuo_male_seed3002.txt",    "temperature": 0.5,  "top_P": 0.7, "top_K": 20, "repetition_penalty": 1.0,  "prompt": "[speed_9]", "skip_refine": false, "refine_prompt": "[oral_5][laugh_0][break_1]"},
+  "12_ertong_female_seed3009":  {"speaker_file": "12_ertong_female_seed3009.txt",  "temperature": 0.4,  "top_P": 0.6, "top_K": 15, "repetition_penalty": 1.05, "prompt": "[speed_4]", "skip_refine": false, "refine_prompt": "[oral_4][laugh_1][break_4]"},
+  "12_ertong_male_seed3007":    {"speaker_file": "12_ertong_male_seed3007.txt",    "temperature": 0.4,  "top_P": 0.6, "top_K": 15, "repetition_penalty": 1.05, "prompt": "[speed_4]", "skip_refine": false, "refine_prompt": "[oral_4][laugh_1][break_4]"},
+  "13_asmr_female_seed3010":    {"speaker_file": "13_asmr_female_seed3010.txt",    "temperature": 0.1,  "top_P": 0.3, "top_K": 5,  "repetition_penalty": 1.2,  "prompt": "[speed_1]", "skip_refine": true},
+  "13_asmr_male_seed3012":      {"speaker_file": "13_asmr_male_seed3012.txt",      "temperature": 0.1,  "top_P": 0.3, "top_K": 5,  "repetition_penalty": 1.2,  "prompt": "[speed_1]", "skip_refine": true}
+}

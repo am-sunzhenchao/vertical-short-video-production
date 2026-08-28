@@ -1,0 +1,4 @@
+{
+  "_comment": "ChatTTS 本地安装配置。由 skill 启动检查自动写入，也可手动修改。",
+  "chatts_root": "/Users/sunzhenchao/ChatTTS"
+}

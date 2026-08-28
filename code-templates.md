@@ -385,10 +385,10 @@ const AUDIO_DIR = resolve(__dirname, `../public/scenes/${SLUG}/audio`);
 const TTS_ENGINE = process.env.TTS_ENGINE ?? "chattts";
 const VOICE = "zh-CN-YunxiNeural";
 const RATE = "+0%";
-const CHATTTS_BATCH = "/Users/sunzhenchao/ChatTTS/chattts_batch.py";
+const CHATTTS_BATCH = "/Users/sunzhenchao/.claude/skills/vertical-short-video-production/chattts/chattts_batch.py";
 const CHATTTS_STYLE = process.env.CHATTTS_STYLE ?? "gentle_female";
 const CHATTTS_PYTHON = process.env.CHATTTS_PYTHON ?? "arch -arm64 python3";
-const PYTHONPATH = "/Users/sunzhenchao/ChatTTS";
+const PYTHONPATH = JSON.parse(readFileSync("/Users/sunzhenchao/.claude/skills/vertical-short-video-production/chattts/config.json","utf8")).chatts_root;
 
 if (!existsSync(AUDIO_DIR)) mkdirSync(AUDIO_DIR, { recursive: true });
 const data = JSON.parse(readFileSync(SCENES_PATH, "utf8"));
@@ -700,19 +700,20 @@ if (SCENES) {
 const R = cn(raw), N = cn(narr);
 const ratio = (N / R) * 100;
 
+// 压缩比只报读数，不设阈值门禁（内容完整性优先，见 SKILL.md）
 const ratioVerdict =
-  ratio > 75 ? "⚠️ 压缩不足（照读书面语，按 6 类再删一轮）"
-  : ratio >= 45 ? "✅ 健康区间"
-  : ratio >= 30 ? "⚠️ 压缩偏猛（必须输出核心论点保留清单逐条核对）"
-  : "❌ 信息损失过大，需重写";
+  ratio > 100 ? "口播扩写（讲解稿比原文长：逐条展开+过渡镜，确认无注水复述）"
+  : ratio > 75 ? "改编幅度小（书面语可能残留，按 6 类扫一遍句式）"
+  : ratio >= 45 ? "常规改编幅度"
+  : "改编幅度大（务必逐条核对核心论点保留清单）";
 
 console.log("## 文稿压缩比统计\n");
 console.log("| | 汉字数 | 有效字符（含标点） |");
 console.log("|---|---|---|");
 console.log(`| 原始文稿 | ${R} | ${eff(raw)} |`);
 console.log(`| 讲解文稿 | ${N} | ${eff(narr)} |`);
-console.log(`\n- **压缩比：${ratio.toFixed(1)}%** → ${ratioVerdict}`);
-console.log(`- **精简 ${R - N} 字（${(100 - ratio).toFixed(1)}%）**`);
+console.log(`\n- **压缩比：${ratio.toFixed(1)}%**（仅读数，不作门禁）→ ${ratioVerdict}`);
+console.log(`- **${R - N >= 0 ? "精简" : "净增"} ${Math.abs(R - N)} 字（${Math.abs(100 - ratio).toFixed(1)}%）**`);
 
 if (scenes) {
   const rows = scenes.map((s) => {
@@ -726,10 +727,10 @@ if (scenes) {
   const spread = Math.max(...sps) - Math.min(...sps);
 
   const speedVerdict =
-    speed < 3.0 ? "⚠️ 拖沓，考虑删镜或提速"
+    speed < 3.0 ? "⚠️ 拖沓，考虑拆句或合镜"
     : speed <= 4.5 ? "✅ 健康"
     : speed <= 5.8 ? "⚠️ 偏快，长镜需拆句"
-    : "❌ 超过 350 字/分门禁，必须精简";
+    : "❌ 超过 350 字/分门禁，必须放慢（拆句，不是删论点）";
   const alignPath =
     spread <= 1.0
       ? "✅ 均匀 → 单段 TTS + 字幕按字数比例分配"
@@ -749,7 +750,120 @@ if (scenes) {
   console.log("\n</details>");
 }
 
-console.log("\n> 精简内容 6 类归纳与核心论点保留清单需人工填写，见 SKILL.md「文稿压缩比统计」");
+console.log("\n> 精简内容 6 类归纳、核心论点保留清单、衔接连贯性检查表需人工填写，见 SKILL.md");
 ```
 
 > **package.json 加一条**：`"stats": "node scripts/script-stats.mjs"`
+
+## 17. Outro 收束 `src/effects/OutroRecapEffect-S{last}.tsx`（Step 5.5 强制）
+
+> 片尾三步回顾 + 金句 + 出处行。**时间轴必须收在音频帧内**，静场（`tailSec`）只留给呼吸和渐隐。
+> 呼吸公式 `1 + 0.012 * Math.sin(f * 0.09)`，防静场段完全冻结。
+
+```tsx
+import React from "react";
+import { AbsoluteFill, useCurrentFrame } from "remotion";
+import { P } from "./palette";
+import { easeOutBack, easeOutCubic, progressAt } from "./easing";
+import { Title } from "./shared";
+
+const STEPS = [
+  { n: "1", text: "第一步", color: P.teal,   t: 14 },
+  { n: "2", text: "第二步", color: P.yellow, t: 42 },
+  { n: "3", text: "第三步", color: P.orange, t: 70 },
+];
+
+export const OutroRecapEffect: React.FC<{ frame?: number }> = ({ frame }) => {
+  const f = frame ?? useCurrentFrame();
+  const lineP = easeOutCubic(progressAt(f, 98, 20));
+  const breathe = 1 + 0.012 * Math.sin(f * 0.09);
+  return (
+    <AbsoluteFill>
+      <Title frame={f} text="三步回顾" />
+      {STEPS.map((s, i) => {
+        const p = easeOutBack(progressAt(f, s.t, 20));
+        return (
+          <div key={s.n} style={{ position: "absolute", left: 100, top: 440 + i * 170, width: 880, height: 140,
+            background: s.color, borderRadius: 70, transform: `scale(${p * (i === 2 ? breathe : 1)})`,
+            display: "flex", alignItems: "center", paddingLeft: 40, boxSizing: "border-box" }}>
+            <div style={{ width: 84, height: 84, borderRadius: 42, background: P.bg, flexShrink: 0,
+              display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontSize: 46, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.n}</span>
+            </div>
+            <span style={{ marginLeft: 36, fontSize: 58, fontWeight: 900, color: P.bg, whiteSpace: "nowrap" }}>{s.text}</span>
+          </div>
+        );
+      })}
+      <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
+        <line x1={300} y1={1010} x2={300 + 480 * lineP} y2={1010} stroke={P.blue} strokeWidth={8} strokeLinecap="round" />
+      </svg>
+      <div style={{ position: "absolute", left: 0, top: 1080, width: 1080, textAlign: "center", fontSize: 62,
+        fontWeight: 900, color: P.white, whiteSpace: "nowrap", transform: `scale(${breathe})`,
+        opacity: easeOutCubic(progressAt(f, 112, 22)) }}>
+        金句收尾
+      </div>
+      <div style={{ position: "absolute", left: 0, top: 1210, width: 1080, textAlign: "center", fontSize: 42,
+        fontWeight: 700, color: P.dimText, whiteSpace: "nowrap", opacity: easeOutCubic(progressAt(f, 146, 24)) }}>
+        出处 / 署名
+      </div>
+    </AbsoluteFill>
+  );
+};
+export default OutroRecapEffect;
+```
+
+## 18. 整片渐隐（Composition 入口，Step 5.5 强制）
+
+```tsx
+const FADE_OUT_FRAMES = 32;
+
+export const MyComposition: React.FC = () => {
+  const { fps } = useVideoConfig();
+  const frame = useCurrentFrame();
+  const totalFrames = Math.round(TOTAL_SEC * fps);
+  /* …sequences… */
+  const fade = Math.max(0, Math.min(1, (frame - (totalFrames - FADE_OUT_FRAMES)) / FADE_OUT_FRAMES));
+  return (
+    <AbsoluteFill style={{ background: MODE_BG[STYLE_MODE] }}>
+      {sequences}
+      {fade > 0 && <AbsoluteFill style={{ background: MODE_BG[STYLE_MODE], opacity: fade, pointerEvents: "none" }} />}
+    </AbsoluteFill>
+  );
+};
+```
+
+## 19. `tailSec` 静场留白：两处必改
+
+**① `scripts/sync-durations.mjs`** — 否则重跑 TTS 会冲掉留白：
+
+```js
+const a = dur(resolve(AUDIO_DIR, `${scene.id}.mp3`));
+const tail = Number(scene.tailSec ?? 0);
+scene.durationSec = Number((a + PAD + tail).toFixed(2));
+```
+
+**② `src/<Name>/Scene.tsx`** — 字幕只在有声区间内分配，否则字幕被摊进静场、比人声慢 30~40%：
+
+```tsx
+const tailFrames = Math.round(Number(scene.tailSec ?? 0) * fps);
+const subtitleFrames = Math.max(1, durationInFrames - tailFrames);
+const lines = React.useMemo(
+  () => buildLines(scene.subtitle ?? scene.narration ?? "", subtitleFrames),
+  [scene.subtitle, scene.narration, subtitleFrames]
+);
+```
+
+**scenes.json 里的 Outro 镜**：
+
+```json
+{
+  "id": "S20",
+  "title": "三步回顾",
+  "shot_type": "effect",
+  "effect": "OutroRecapEffect",
+  "tailSec": 2.2,
+  "durationSec": 7.87,
+  "subtitle": "回顾一下：第一步、第二步、第三步。金句收尾。",
+  "narration": "回顾一下：第一步、第二步、第三步。金句收尾。"
+}
+```
