@@ -540,7 +540,7 @@ export const ImageShot: React.FC<ImageShotProps> = ({ frame, scene }) => {
 export default ImageShot;
 ```
 
-## 13. Kurzgesagt 模式模板 `src/effects/KurzOneConcept-<id>.tsx`
+## 13. Kurzgesagt 模式模板 `src/effects/S<id>-KurzOneConcept.tsx`
 
 > 扁平矢量、纯色块、**一镜一概念**。无渐变/无阴影/无发光/无粒子。元素依次弹入（easeOutBack 轻回弹）。全片色板 ≤ 5~6 高饱和色压深底。
 
@@ -570,7 +570,7 @@ export const KurzOneConcept: React.FC<{ frame?: number; scene: any }> = ({ frame
 export default KurzOneConcept;
 ```
 
-## 14. Vox 模式模板 `src/effects/VoxChart-<id>.tsx`
+## 14. Vox 模式模板 `src/effects/S<id>-VoxChart.tsx`
 
 > 图表即主体，口播驱动逐帧点亮。黄/白标注线、箭头、圈红划重点。近黑纯底。**图表用代码精绘，禁止生图模型画**（数字会糊）。
 
@@ -615,7 +615,7 @@ export const VoxChart: React.FC<{ frame?: number; scene: any }> = ({ frame, scen
 export default VoxChart;
 ```
 
-> **EFFECT_MAP 注册**：在 Scene.tsx 顶部把 `ImageShot`、`KurzOneConcept`、`VoxChart` 及各 `{Effect}-{sceneId}` 加入 `EFFECT_MAP`。`shot_type != "effect"` 的 scene，`effect` 字段填 `"ImageShot"` 并配 `asset` 路径。
+> **EFFECT_MAP 注册**：在 Scene.tsx 顶部把 `ImageShot`、`KurzOneConcept`、`VoxChart` 及各 `{sceneId}-{Effect}` 加入 `EFFECT_MAP`。`shot_type != "effect"` 的 scene，`effect` 字段填 `"ImageShot"` 并配 `asset` 路径。
 
 ## 15. package.json（项目根，`<Name>` 替换为 Composition 名）
 
@@ -755,7 +755,7 @@ console.log("\n> 精简内容 6 类归纳、核心论点保留清单、衔接连
 
 > **package.json 加一条**：`"stats": "node scripts/script-stats.mjs"`
 
-## 17. Outro 收束 `src/effects/OutroRecapEffect-S{last}.tsx`（Step 5.5 强制）
+## 17. Outro 收束 `src/effects/S{last}-OutroRecap.tsx`（Step 5.5 强制）
 
 > 片尾三步回顾 + 金句 + 出处行。**时间轴必须收在音频帧内**，静场（`tailSec`）只留给呼吸和渐隐。
 > 呼吸公式 `1 + 0.012 * Math.sin(f * 0.09)`，防静场段完全冻结。

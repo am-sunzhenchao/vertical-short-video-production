@@ -76,7 +76,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 │   ├── public/scenes/<slug>/scenes.json
 │   ├── public/scenes/<slug>/audio/*.mp3
 │   ├── src/<Composition>/Scene.tsx
-│   ├── src/effects/*.tsx          ← Effect 命名：{EffectName}-{sceneId}.tsx，例：SandwichEffect-04.tsx
+│   ├── src/effects/*.tsx          ← Effect 命名：{sceneId}-{EffectName}.tsx，例：S04-Sandwich.tsx
 │   │                                 **每个 scene 对应一个独立 tsx，禁止多 scene 共用同一 Effect 组件**
 │   └── scripts/tts.mjs, sync-durations.mjs, render-cover.mjs
 └── cover/标题.txt, 描述.txt, 封面v1.svg/png, 封面v2.svg/png
@@ -499,7 +499,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 | # | 要件 | 做法 | 参数基准 |
 |---|---|---|---|
-| 1 | **Outro scene** | 全片最后追加一镜（`OutroRecapEffect-S{last}.tsx`），内容为「N 步回顾」或「一句金句 + 出处/署名」。**禁止**把它写成新知识点 | 旁白 20–30 汉字，约 5–6s |
+| 1 | **Outro scene** | 全片最后追加一镜（`S{last}-OutroRecap.tsx`），内容为「N 步回顾」或「一句金句 + 出处/署名」。**禁止**把它写成新知识点 | 旁白 20–30 汉字，约 5–6s |
 | 2 | **静场留白（`tailSec`）** | Outro 的 `durationSec = 音频时长 + PAD + tailSec`；静场内画面继续呼吸（极缓 scale/translate），不静止 | `tailSec` = 2.0~2.5s |
 | 3 | **整片渐隐** | Composition 入口叠一层与底色同色的 `AbsoluteFill`，最后 N 帧 opacity 0→1 | `FADE_OUT_FRAMES` = 30~35 |
 
@@ -578,7 +578,8 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - ❌ 总览 scene 后分项无视觉锚点（用 WallHeader 挂顶）
 - ❌ 长知识场景（K 要素且 >8s）复用纯锚点型 Effect（WallHeader 等仅标题组件），画面信息量远低于旁白
 - ❌ 多个信息量不同的场景硬套同一锚点型 Effect 凑数（信息密度不够应新建专用内容型 Effect）
-- ❌ 多个 scene 共用同一 Effect 组件（每 scene 必须独立 tsx `{EffectName}-{sceneId}.tsx`）
+- ❌ 多个 scene 共用同一 Effect 组件（每 scene 必须独立 tsx `{sceneId}-{EffectName}.tsx`）
+- ❌ Effect 文件名把 sceneId 放在后面（如 `LoopEffect-S19.tsx`）——查找键必须在最前，否则 `ls` 与编辑器模糊搜索按语义名排序，和片子时间轴无关，改某一镜要先全目录 grep 才能定位
 - ❌ 相邻 Effect 视觉语言完全另起（无元素/位置/强调色任一承接），整片像 N 张互不相干的图轮播
 - ❌ 过渡镜只放一句标题（过渡镜必须画出"上镜收束 + 下镜雏形"两个形态）
 - ❌ 相邻镜入场/出场方向互相打架（上镜右滑出、下镜右滑入）
@@ -639,7 +640,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 > **类型规则**：
 > - **锚点型**：仅显示标题/编号，信息量低。**只能用于 ≤8s 的过渡/挂顶场景**，或作为「内容型 Effect 的顶部标题」组合使用
 > - **内容型**：承载数据/对比/流程/枚举等可视化。**K 要素且 >8s 的知识场景必须用内容型**
-> - 若已有 Effect 都无法兑现 subtitle 的信息密度，**新建专用 Effect**（命名 `{语义}Effect-{sceneId}.tsx`），不要硬套锚点型凑数
+> - 若已有 Effect 都无法兑现 subtitle 的信息密度，**新建专用 Effect**（命名 `{sceneId}-{语义}.tsx`），不要硬套锚点型凑数
 
 ---
 
