@@ -96,8 +96,8 @@ export const MyEffect: React.FC<MyEffectProps> = ({ frame }) => {
   // const p = easeOutCubic(progressAt(f, 0, 20));
   return (
     <AbsoluteFill style={{ background: "linear-gradient(180deg, #0d0d1a 0%, #1a1a3a 100%)" }}>
-      <div style={{ position: "absolute", top: 120, left: 40, width: 1000, height: 1240 }}>
-        {/* 标题示例：clipTitle("你的标题文字") 确保不超过16字符 */}
+      <div style={{ position: "absolute", top: 150, left: 40, width: 1000, height: 1210 }}>
+        {/* 内容区从 top:150 开始（顶部留白 0–150px 为平台安全区，禁止内容元素入侵） */}
         {/* <span style={{ fontSize: 70, whiteSpace: "nowrap" }}>{clipTitle("标题")}</span> */}
       </div>
     </AbsoluteFill>
@@ -867,3 +867,147 @@ const lines = React.useMemo(
   "narration": "回顾一下：第一步、第二步、第三步。金句收尾。"
 }
 ```
+## 20. `scripts/check-draft-sync.mjs`（草稿一致性机械门禁 · Step3/5 开工前必跑）
+
+> 防止"用户已修改 `draft-review.md`，但 scenes.json/配音仍是旧版"的静默漂移。
+> 逐镜比对草稿引用行与 scenes.json，不一致 → 打印差异并 `exit 1`，阻塞后续制作。
+
+```js
+#!/usr/bin/env node
+import { readFileSync, existsSync, readdirSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const args = process.argv.slice(2);
+const arg = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
+
+const DRAFT = arg("--draft") ?? resolve(__dirname, "../draft-review.md");
+let scenesPath = arg("--scenes") ?? resolve(__dirname, "../public/scenes");
+
+if (!existsSync(DRAFT)) { console.log(`[check-draft-sync] 未找到 ${DRAFT}，跳过（无草稿可校验）`); process.exit(0); }
+if (!existsSync(scenesPath)) { console.log(`[check-draft-sync] 未找到 scenes 目录，跳过`); process.exit(0); }
+if (readdirSync(scenesPath).every(f => !f.endsWith(".json"))) {
+  const sub = readdirSync(scenesPath).find(d => existsSync(resolve(scenesPath, d, "scenes.json")));
+  if (sub) scenesPath = resolve(scenesPath, sub, "scenes.json"); else { console.log("[check-draft-sync] 未找到 scenes.json，跳过"); process.exit(0); }
+} else {
+  scenesPath = resolve(scenesPath, readdirSync(scenesPath).find(f => f.endsWith(".json")));
+}
+
+const review = readFileSync(DRAFT, "utf8");
+const data = JSON.parse(readFileSync(scenesPath, "utf8"));
+
+const blocks = review.split(/\*\*S(\d+)｜/);
+const draftMap = {};
+for (let i = 1; i < blocks.length; i += 2) {
+  const sid = "S" + blocks[i].padStart(2, "0");
+  const m = blocks[i + 1].match(/^> (.+)$/m);
+  if (m) draftMap[sid] = m[1].trim();
+}
+
+const diffs = [];
+for (const scene of data.scenes) {
+  const draft = draftMap[scene.id];
+  if (!draft) continue;
+  if (draft !== scene.subtitle && draft !== scene.narration) diffs.push(scene.id);
+}
+
+if (diffs.length) {
+  console.error(`[check-draft-sync] ❌ ${diffs.length} 个场景与 draft-review.md 不一致：${diffs.join(", ")}`);
+  console.error(`[check-draft-sync] draft-review.md 已被修改。请重新读取最新草稿并同步 scenes.json 后再继续。`);
+  for (const id of diffs) {
+    const scene = data.scenes.find(s => s.id === id);
+    console.error(`  ${id}\n    draft : ${draftMap[id]}\n    当前  : ${scene.subtitle}`);
+  }
+  process.exit(1);
+}
+console.log(`[check-draft-sync] ✅ ${data.scenes.length} 镜全部与 draft-review.md 一致`);
+```
+
+> **用法**：每个新项目把它拷进 `scripts/`；Step3/Step5 开工前先跑 `node scripts/check-draft-sync.mjs`。
+> **设计要点**：
+> - 草稿不存在（Step2 前）或 scenes.json 未生成时静默跳过，不阻塞早期流程
+> - 比对的是草稿中每个 `**S{nn}｜标题**` 块下的第一条 `> ` 引用行（即该镜旁白全文）
+> - 只要不一致就 `exit 1`，把"忘记重读草稿"从静默错误变成显式失败
+
+## 21. `scripts/tts-single.mjs`（单场景重新生成 · Step5 旁白修改后使用）
+
+> 旁白局部修改时用此脚本，避免全量重跑浪费时间。内置绝对路径处理（防 `chattts_batch.py` 的 `os.chdir` 副作用）、归一化、sync-durations 三步合一。
+
+```js
+#!/usr/bin/env node
+/**
+ * 用法：node scripts/tts-single.mjs --scene S03
+ *       node scripts/tts-single.mjs --scene S01 --slow   # 额外降速 0.9（开场镜头专用）
+ */
+import { execFileSync, spawnSync } from "child_process";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+import { tmpdir } from "os";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SLUG = "my-video"; // ← 改这里
+const SCENES_PATH = resolve(__dirname, `../public/scenes/${SLUG}/scenes.json`);
+const AUDIO_DIR   = resolve(__dirname, `../public/scenes/${SLUG}/audio`);
+
+const CHATTTS_BATCH  = "/Users/sunzhenchao/.claude/skills/vertical-short-video-production/chattts/chattts_batch.py";
+const CHATTTS_STYLE  = process.env.CHATTTS_STYLE ?? "gentle_female";
+const CHATTTS_PYTHON = process.env.CHATTTS_PYTHON ?? "arch -arm64 python3";
+const PYTHONPATH     = JSON.parse(readFileSync(
+  "/Users/sunzhenchao/.claude/skills/vertical-short-video-production/chattts/config.json", "utf8"
+)).chatts_root;
+
+const args = process.argv.slice(2);
+const argVal = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
+const sceneId = argVal("--scene");
+const doSlow  = args.includes("--slow");
+
+if (!sceneId) { console.error("用法: node scripts/tts-single.mjs --scene <id> [--slow]"); process.exit(1); }
+
+const data  = JSON.parse(readFileSync(SCENES_PATH, "utf8"));
+const scene = data.scenes.find(s => s.id === sceneId);
+if (!scene) { console.error(`未找到 scene: ${sceneId}`); process.exit(1); }
+
+if (!existsSync(AUDIO_DIR)) mkdirSync(AUDIO_DIR, { recursive: true });
+
+// ── 1. TTS 生成（绝对路径，防 os.chdir 副作用）──
+const outAbs  = resolve(AUDIO_DIR, `${sceneId}.mp3`);
+const jobs    = [{ text: scene.narration ?? scene.subtitle ?? "", output: outAbs, style: scene.ttsStyle ?? CHATTTS_STYLE }];
+const jobFile = resolve(tmpdir(), `tts_single_${Date.now()}.json`);
+writeFileSync(jobFile, JSON.stringify(jobs));
+
+const pyArgs = CHATTTS_PYTHON.split(" ");
+console.log(`[tts-single] 生成 ${sceneId} (style: ${jobs[0].style})...`);
+const r = spawnSync(pyArgs[0], [...pyArgs.slice(1), CHATTTS_BATCH, "--jobs", jobFile],
+  { encoding: "utf8", timeout: 300_000, env: { ...process.env, PYTHONPATH } });
+if (r.stdout) process.stdout.write(r.stdout);
+if (r.error || r.status !== 0) { console.error("TTS 失败:", r.stderr); process.exit(1); }
+
+// ── 2. 可选降速（--slow，atempo=0.9，开场镜头专用）──
+if (doSlow) {
+  const tmp = outAbs.replace(".mp3", "_slow.mp3");
+  execFileSync("ffmpeg", ["-y", "-i", outAbs, "-af", "atempo=0.9", "-ar", "44100", tmp, "-loglevel", "error"]);
+  execFileSync("mv", [tmp, outAbs]);
+  console.log(`[tts-single] 已降速 0.9x`);
+}
+
+// ── 3. 音量归一化 ──
+const norm = outAbs.replace(".mp3", "_norm.mp3");
+execFileSync("ffmpeg", ["-y", "-i", outAbs, "-af", "loudnorm=I=-16.60:TP=-3.59:LRA=1.20", "-ar", "44100", norm, "-loglevel", "error"]);
+execFileSync("mv", [norm, outAbs]);
+console.log(`[tts-single] 已归一化 -16.60 LUFS`);
+
+// ── 4. 同步时长 ──
+const dur = (f) => Number(execFileSync("ffprobe", ["-v","error","-show_entries","format=duration",
+  "-of","default=noprint_wrappers=1:nokey=1", f], { encoding: "utf8" }).trim());
+const audio = dur(outAbs);
+const tail  = Number(scene.tailSec ?? 0);
+scene.durationSec = Number((audio + tail).toFixed(2));
+writeFileSync(SCENES_PATH, JSON.stringify(data, null, 2), "utf8");
+console.log(`[tts-single] ${sceneId}: ${audio.toFixed(2)}s → durationSec=${scene.durationSec}s ✅`);
+```
+
+> **package.json 加一条**：`"tts-single": "node scripts/tts-single.mjs"`
+> **S01 开场标准操作**：`node scripts/tts-single.mjs --scene S01 --slow`（生成 + 降速 + 归一化 + sync 一步完成）
+

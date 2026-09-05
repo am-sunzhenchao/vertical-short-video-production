@@ -105,7 +105,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - [ ] **执行「衔接连贯性检查」**（见下方），逐相邻镜核对叙事过渡与画面延续，缺过渡处补过渡镜
 - [ ] 评测通过（总分≥8且核心维度1-5无≤5）后，呈现最终草稿 + 评测表 + 优化摘要 + **样式确认表**，**停下来等 review**
 - [ ] **草稿落盘**：将最终草稿（含场景表、样式确认表、评测结果、**文稿压缩比统计**、**衔接连贯性检查表**）写入项目目录下 `draft-review.md` 文件，方便用户直接在文件中修改草稿和样式，减少交互轮次
-- [ ] 用户修改完成后，读取 `draft-review.md` 以获取最新草稿，再进入 Step 3
+- [ ] 用户修改完成后，**必须重新 read `draft-review.md` 文件**以获取最新草稿，再进入 Step 3。**禁止依赖会话上下文中的草稿记忆**——用户随时可能直接改文件，上下文里的版本随时过期。进入 Step3/4/5 任何一步前，先跑 `node scripts/check-draft-sync.mjs`（模板见 code-templates.md §20），不一致则同步后再继续
 - [ ] 3轮迭代仍未通过时，呈现最优版本 + 剩余问题清单，让用户决定是否继续
 - [ ] 操作者明确说"通过/OK/开始"前，**不写一行代码**
 - [ ] **样式确认表须与草稿一起呈现**，不得在草稿通过后才单独询问
@@ -372,13 +372,14 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 ### Step 3 · 视觉素材
 
+- [ ] **开工前先跑 `node scripts/check-draft-sync.mjs`**：确认 scenes.json 与最新 `draft-review.md` 一致，不一致先同步（机械门禁，防止草稿已被用户修改而沿用旧版）
 - [ ] **每个 scene 在 scenes.json 标注 `shot_type`，Step3 按标签路由素材来源**（见下表），标签在 Step2 编剧时确定
 - [ ] 按 scene 类型决定素材来源（algorithmic-art / frontend-design / canvas-design / 手写SVG）
 - [ ] **H 要素场景**：优先用动态 Effect（爆炸、慢镜、粒子）制造视觉爽感；猎奇内容配高饱和撞色
 - [ ] **K 要素场景**：用数据可视化/对比卡片/步骤拆解 Effect，知识点要有视觉锚点
 - [ ] **R 要素场景**：色调偏暖（金色/琥珀），人物/手写/温柔光晕元素，避免冷色硬朗风格
 - [ ] SVG 内 emoji 全替换成 Unicode 符号
-- [ ] 走 render-cover.mjs 输出 PNG，目检无豆腐方块
+- [ ] 走 render-cover.mjs 输出 PNG，目检无豆腐方块；单张/任意 SVG 用 `node <skill>/scripts/svg2png.mjs <file.svg> [宽度]`（输出同名 .png，默认宽1080，可任意目录执行）
 
 #### shot_type 分镜路由表（每镜打标签，决定素材来源）
 
@@ -404,6 +405,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - [ ] **画面兑现检查（强制卡点·纯代码审查）**：逐 scene 对照 subtitle，把其中的**可视化素材**落到 Effect 画面上，不得只显示标题。**通过阅读 Effect 代码核对，不通过渲染关键帧验证**
   - 检查方法：把 subtitle 拆成「关键名词 / 数据 / 对比 / 流程 / 枚举」5类元素，逐个确认在 Effect 里有对应视觉呈现
   - 例：subtitle 含「单线程 vs 多线程」→ 画面必须有左右对比；含「内存飙升」→ 必须有增长可视化；含「版本混乱」→ 必须有多元素散布；含「①②③④」→ 必须逐项展开
+- [ ] **编译验证用 `npx tsc --noEmit`**（每批 Effect 写完后执行一次）：只做类型检查，不产生任何输出文件，不污染 `out/` 目录
   - **K 要素场景且 durationSec > 8s**：禁止只用「锚点型 Effect」（WallHeader 等仅标题的组件），必须配「内容型 Effect」（数据可视化/对比卡片/流程拆解）
 - [ ] **画面连贯性检查（强制卡点·纯代码审查）**：逐相邻 Effect 对照，确认三点——① 视觉锚点承接（元素/位置/强调色至少一项延续，不得每镜另起一套视觉语言）；② 入场方向与上镜出场不冲突（避免相邻镜反向滑动打架）；③ 过渡镜 Effect 必须"承上启下"（画面同时出现上镜元素的收束形态与下镜元素的雏形），不能只放一句标题
 - [ ] 字幕：固定70px，每次只显示一行（≤13视觉字符），串行逐行，三级切割（强标点→逗号→机械截断），禁 nowrap
@@ -417,6 +419,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 ### Step 5 · 音频
 
+- [ ] **跑 TTS 前先跑 `node scripts/check-draft-sync.mjs`**：草稿可能已在用户侧二次修改，narration 不一致会导致配音与字幕错位，必须机械校验
 - [ ] **按 Step2「语速极差」判定选路**（见文稿压缩比统计）：
   - 极差 ≤ 1.0 字/秒 → **单段 TTS**（每 scene 整段一次调用，韵律自然）+ 字幕按汉字数比例分配时间
   - 极差 > 1.0 字/秒 → **多段 TTS**（按 `subtitleSegments` 逐句生成）+ ffmpeg concat + `startSec` 回写
@@ -434,6 +437,20 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
   for f in public/scenes/<slug>/audio/S*.mp3; do
     ffmpeg -y -i "$f" -af "loudnorm=I=-16.60:TP=-3.59:LRA=1.20" -ar 44100 "${f%.mp3}_norm.mp3" && mv "${f%.mp3}_norm.mp3" "$f"
   done
+  ```
+- [ ] **第一个 scene 音频降速 0.9**（强制）：开场语速过快观众无缓冲直接跳出。全量 TTS 生成并归一化后，对 S01 单独执行降速 + 重新归一化 + sync：
+  ```bash
+  f="public/scenes/<slug>/audio/S01"
+  ffmpeg -y -i "$f.mp3" -af "atempo=0.9,loudnorm=I=-16.60:TP=-3.59:LRA=1.20" -ar 44100 "${f}_norm.mp3" -loglevel error
+  mv "${f}_norm.mp3" "$f.mp3"
+  node scripts/sync-durations.mjs
+  ```
+  > ChatTTS `InferCodeParams` 不支持 `speed` 参数，语速调整只能走 ffmpeg `atempo`（建议 0.85~0.95，超出范围音质明显损失）。
+- [ ] **单场景重新生成**（旁白修改后）：全量重跑浪费时间，用 `scripts/tts-single.mjs` 只重新生成指定 scene（模板见 code-templates.md §21）：
+  ```bash
+  node scripts/tts-single.mjs --scene S03   # 生成 + 归一化 + sync-durations 一步完成
+  ```
+  > ⚠️ `chattts_batch.py` 内部执行 `os.chdir(CHATTS_ROOT)`，output 路径**必须是绝对路径**（用 `os.path.abspath()`），否则文件写到 ChatTTS 目录而非项目目录，难以排查。`tts-single.mjs` 模板已内置此处理。
   ```
 
 #### ChatTTS 可用风格（`/Users/sunzhenchao/ChatTTS/speakers/` 已保存 embedding）
@@ -532,6 +549,11 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 - **默认交付物 = Step4 项目代码 + Step5 TTS 配音 + Step6 封面/文案**。三者产出后即视为完成，向用户交付并结束。
 - **不做关键帧渲染自检**：画面正确性靠 Step4「画面兑现检查（纯代码审查）」保证；不主动 `remotion still` 渲染帧来目视验证。
+- **编译验证用 `tsc --noEmit`，不用 `remotion still`**：每次写完 Effect 代码需确认编译通过时，使用 `npx tsc --noEmit` 做类型检查，不得以「验证编译」为由触发 `remotion still`——后者会在 `out/` 目录生成大量无用 PNG 文件，且违反上一条规则。
+  ```bash
+  npx tsc --noEmit   # ← 编译验证的正确方式，不产生任何输出文件
+  ```
+- **`out/` 目录只用于最终出片**：`out/` 目录仅供 `remotion render`（`npm run render`）输出 mp4 使用，不得写入任何 PNG 或中间文件。若操作者要求渲染关键帧，输出到 `/tmp/` 而非项目 `out/` 目录。
 - **不渲染 mp4**：默认不跑 `remotion render`。用户可自行 `npm run dev` 预览、`npm run render` 出片。
 - 仅当**操作者明确要求**「渲染看看 / 出 mp4 / 帮我核对某镜画面」时，才渲染关键帧或成片。
 
@@ -548,10 +570,14 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - ❌ 为压时长/降压缩比而删论点、砍过渡镜（内容完整性优先，压缩比与总时长都不是门禁）
 - ❌ 核心论点保留清单出现 ❌ 丢失项仍放行
 - ❌ 手工口算总时长/字数（必须跑 `scripts/script-stats.mjs`，口算必错）
+- ❌ 依赖会话上下文中的草稿内容生成产物，不重新 read `draft-review.md`（用户可能已直接改文件，上下文版本随时过期；记忆≠文件）
+- ❌ Step3/5 开工前未跑 `node scripts/check-draft-sync.mjs`（草稿-scenes.json 一致性机械门禁，不一致不得继续）
+- ❌ 复制其他项目的 `node_modules`（native binding 按机器架构解析，跨项目复制必缺平台二进制；一律 `npm install`，装完用 `npx tsc --noEmit` 做编译烟雾测试）
 - ❌ 未经用户确认 styleMode 直接按默认 tech-mint 写代码（样式确认表必须含 styleMode 选择项）
 - ❌ 凭美学/直觉选 styleMode——必须走 visual-system.md「风格选择决策树」，并在样式确认表填四问判定留痕
 - ❌ 草稿里产出中英对照字幕（默认纯中文；操作者明确要求双语才做）
 - ❌ 未经操作者授意自动渲染 mp4
+- ❌ 以「验证编译」为由运行 `remotion still`——编译验证只用 `npx tsc --noEmit`；`remotion still` 会在 `out/` 目录堆积无用 PNG，且属于被禁止的视觉自检行为
 - ❌ 代码生成后主动渲染关键帧（`remotion still`）做视觉自检——画面兑现只在代码层面审查，视觉核对由操作者主动发起
 - ❌ 完成 Step6 后不收尾、继续渲染成片或反复自检（默认交付 = 代码+配音+封面，见「交付边界」）
 - ❌ 修改后默认渲染验证（仅按需验证）
@@ -569,6 +595,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - ❌ Effect 内时间用百分比（用绝对帧数）
 - ❌ Effect 内 3D rotateY 翻页（竖屏变形）
 - ❌ Effect 字号过小（说明≥40px，标题≥80px，Badge≥28px）
+- ❌ Effect 内容元素 `top` 值小于 150px——顶部 0–150px 为平台留白区，内容从 `top: 150` 起；背景装饰层（全幅散点/粒子/纹理，无文字无图形）不受此限制
 - ❌ Effect 内短标签/短词（版本号、语言名、卡片标题、Badge）未加 `whiteSpace: "nowrap"` 导致换行
 - ❌ 配图 objectFit: cover（用 contain）
 - ❌ SVG 内彩色 emoji（走 resvg 渲染的一律替换成 Unicode 符号）
@@ -596,13 +623,18 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 **音频/TTS**
 - ❌ 默认女声 Xiaoxiao（默认 ChatTTS gentle_female / Edge-TTS YunxiNeural 男声）
-- ❌ TTS 文本含 MySQL/Redis 等英文术语（用中文等价物）
+- ❌ TTS 文本含英文术语、数字字母混排、英文专有名词——以下三类 ChatTTS 均不稳定，轻则读错，重则吞字，**一律替换为中文**：
+  - ① 纯英文术语（`MySQL` / `config.json` / `safetensors`）→ 同义中文词或直接删除
+  - ② 数字+单位混排（`36G` / `1.56T` / `31M` / `99.9%` / `BF16`）→ 汉字读音（三十六G / 一点五六T / 三十一M / 百分之九十九）
+  - ③ 英文专有名词（`Kimi K3` / `Windows`）→ 音译或括注；若无法音译，在旁白中避开，仅保留在 subtitle 中显示
 - ❌ narration 与 subtitle 内容不一致（仅允许发音替换）
 - ❌ ChatTTS 用 CLI 模式（`chattts_cli.py`）批量生成——重复加载模型必超时，必须用 `chattts_batch.py`
 - ❌ Node.js 调用 Python 时未设 `PYTHONPATH: "/Users/sunzhenchao/ChatTTS"`（否则 ModuleNotFoundError）
 - ❌ 生成 TTS 前未先单句验证 ChatTTS 可用性
 - ❌ TTS 重新生成后未同步更新 scenes.json：① `sync-durations.mjs` 更新 durationSec；② ffprobe 重算各 part 时长回写 startSec（两步缺一不可）
 - ❌ TTS 后未做音量归一化（全部 MP3 用 ffmpeg loudnorm 归一化到 -16.60 LUFS）
+- ❌ 第一个 scene 音频未做降速处理（全量 TTS 完成后必须对 S01 执行 `atempo=0.9` 降速 + 重新归一化 + sync-durations）
+- ❌ 单场景重新生成时 output 路径使用相对路径——`chattts_batch.py` 内部 `os.chdir(CHATTS_ROOT)` 会使相对路径失效，必须用 `os.path.abspath()` 生成绝对路径
 - ❌ 在语速均匀（极差 ≤1.0 字/秒）时仍对 ≤13 字短句逐句单独 TTS——短句单独合成韵律必断裂，应走单段 TTS + 字幕比例分配
 
 **封面/发布**
