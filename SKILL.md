@@ -66,7 +66,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - 栈：Remotion 4.x + ChatTTS / edge-tts + @resvg/resvg-js
 - **视觉风格模式**：`tech-mint`（默认·深空薄荷）/ `kurzgesagt`（扁平矢量科普）/ `vox`（图表驱动解释）/ `doodle-note`（手绘读书笔记），Step2 按**决策树**锁定，详见 visual-system.md
 - TTS 引擎：ChatTTS（默认）或 Edge-TTS（通过 `TTS_ENGINE` 环境变量切换）
-- 默认配音：ChatTTS `gentle_female` 风格 / Edge-TTS `zh-CN-YunxiNeural`（云希，男声）
+- 默认配音：**强制 `gentle_female`（温和女声），不再判断/询问其它音色** / Edge-TTS `zh-CN-YunxiNeural`（云希，男声）
 
 ## 交付物清单
 
@@ -353,12 +353,13 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - [ ] 方案四·暖棕烛光 `#120a04 → #1f1008`（温暖故事感）
 > 不回复默认方案一
 
-### 语音风格
-| 项目 | 选项 | 默认 |
+### 语音风格（已锁定，不询问、不判断）
+| 项目 | 取值 | 说明 |
 |------|------|------|
-| 全局音色 | calm_male / energetic_male / **gentle_female** / gentle_male / deep_voice / deep_male / natural_conversational | gentle_female |
-| 是否 per-scene 不同风格 | 是 / 否 | 否 |
-> 如需 per-scene 不同风格，请在草稿表格中为每个 scene 标注风格
+| 全局音色 | **`gentle_female`（强制默认）** | 所有项目一律用 `gentle_female`，不在样式确认表中作为选项询问，不自行判断切换其它音色 |
+| 是否 per-scene 不同风格 | 否 | 全片统一 `gentle_female` |
+
+> **音色规则（强约束）**：默认且唯一使用 `gentle_female`。即使题材偏科普/技术，也不得自行改用 `06_kepu_male_seed333` 等 Demo 音色——除非操作者在对话中明确指定其它音色。scenes.json 中每个 scene 的 `ttsStyle` 一律填 `gentle_female`（或留空走默认）。Demo 音色库仅作"操作者点名时"的备选清单，不再是自动选型依据。
 
 ### 字幕样式
 | 项目 | 当前默认 | 是否修改 |
@@ -472,6 +473,8 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 ##### Demo 音色库（固定音色 + 固定参数，可完全复现）
 
+> ⚠️ 这是**备选清单**，不是默认来源。默认音色锁定 `gentle_female`（见上方"语音风格"强约束），只有操作者明确点名下表某个 `ttsStyle` 时才使用。
+
 > 命名规则：`{风格编号}_{风格}_{性别}_seed{N}`，speaker 文件已同步至 `/Users/sunzhenchao/ChatTTS/speakers/`。  
 > 参考试听：`/Users/sunzhenchao/Desktop/工作文档/self/素材/chattts/audios/{ttsStyle}.mp3`
 
@@ -484,7 +487,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 | `03_jsfx_female_seed88` | 女 | 青年成熟女声 | 技术分享 | 5 | ✓ oral_4 | 技术口播、知识分享 |
 | `03_jsfx_male_seed99` | 男 | 青年厚声 | 技术分享 | 5 | ✓ oral_4 | 技术口播 |
 | `04_jsjs_female_seed44` | 女 | 青年厚声 | 技术介绍 | 5 | ✗ | 产品/工具介绍 |
-| **`04_jsjs_male_seed222`** | 男 | **青年成熟厚声** | **技术介绍** | 5 | ✗ | **技术介绍（推荐·本项目默认）** |
+| `04_jsjs_male_seed222` | 男 | 青年成熟厚声 | 技术介绍 | 5 | ✗ | 技术介绍（备选，仅操作者点名时用） |
 | `05_fengjing_female_seed777` | 女 | 青年成熟厚声 | 风景介绍 | 3 | ✗ | 旅游、风景、人文 |
 | `05_fengjing_male_seed888` | 男 | 清亮少年感 | 风景介绍 | 3 | ✗ | 旅游类 |
 | `06_kepu_female_seed555` | 女 | 青年成熟厚声 | 科普讲解 | 6 | ✓ oral_2 | 科普、原理解析 |
@@ -623,6 +626,8 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 **音频/TTS**
 - ❌ 默认女声 Xiaoxiao（默认 ChatTTS gentle_female / Edge-TTS YunxiNeural 男声）
+- ❌ 自行判断题材后改用 `gentle_female` 以外的音色（如科普题材擅自换 `06_kepu_male_seed333`）——音色锁定 `gentle_female`，仅当操作者明确点名时才换
+- ❌ 把"全局音色"当作样式确认表的可选项去询问操作者（已锁定，不询问）
 - ❌ TTS 文本含英文术语、数字字母混排、英文专有名词——以下三类 ChatTTS 均不稳定，轻则读错，重则吞字，**一律替换为中文**：
   - ① 纯英文术语（`MySQL` / `config.json` / `safetensors`）→ 同义中文词或直接删除
   - ② 数字+单位混排（`36G` / `1.56T` / `31M` / `99.9%` / `BF16`）→ 汉字读音（三十六G / 一点五六T / 三十一M / 百分之九十九）
