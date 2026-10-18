@@ -64,7 +64,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - 平台：微信视频号 + 抖音
 - 视频：1080×1920，25fps；封面：1080×1440
 - 栈：Remotion 4.x + ChatTTS / edge-tts + @resvg/resvg-js
-- **视觉风格模式**：`tech-mint`（默认·深空薄荷）/ `kurzgesagt`（扁平矢量科普）/ `vox`（图表驱动解释）/ `doodle-note`（手绘读书笔记），Step2 按**决策树**锁定，详见 visual-system.md
+- **视觉风格模式**：`tech-mint`（默认·深空薄荷）/ `kurzgesagt`（扁平矢量科普）/ `vox`（图表驱动解释）/ `vox-light`（图表驱动·清爽浅底）/ `doodle-note`（手绘读书笔记），Step2 按**决策树**锁定，详见 visual-system.md
 - TTS 引擎：ChatTTS（默认）或 Edge-TTS（通过 `TTS_ENGINE` 环境变量切换）
 - 默认配音：**强制 `gentle_female`（温和女声），不再判断/询问其它音色** / Edge-TTS `zh-CN-YunxiNeural`（云希，男声）
 
@@ -100,6 +100,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - [ ] **草稿须覆盖 HKRR 四要素**（见下表），缺项须在草稿中注明补充方案
 - [ ] **以 markdown 呈现草稿**
 - [ ] **草稿内容要尽量完整，保证内容正确、内容连贯、逻辑清晰**
+- [ ] **过「三条改编硬规则」**（见下方）：扩写上限 / 禁概览+细讲 / 钩子数量自检。任一不过，先改到过，再评测
 - [ ] 草稿写完后立即执行「7维度量化评测」（见下方），按评测结果自动优化迭代
 - [ ] **执行「文稿压缩比统计」**（见下方），产出压缩比读数 + 精简内容归纳 + 核心论点保留清单 + 语速核对（压缩比只报数、不设阈值）
 - [ ] **执行「衔接连贯性检查」**（见下方），逐相邻镜核对叙事过渡与画面延续，缺过渡处补过渡镜
@@ -331,6 +332,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - [ ] `tech-mint`·深空薄荷（默认，星空+薄荷绿，适合 AI/技术/工程题材）
 - [ ] `kurzgesagt`·扁平矢量科普（纯色块+高饱和撞色+一镜一概念，适合科普/原理/抽象概念）
 - [ ] `vox`·图表驱动解释（口播驱动+图表即主体+标注线圈红，适合分析/观点/数据/复盘）
+- [ ] `vox-light`·图表驱动解释·浅底变体（同 `vox` 叙事，换清爽浅底色板，适合微信视频号白色信息流）
 - [ ] `doodle-note`·手绘读书笔记（浅纸底+纯黑单线+逐笔绘制+常驻栏目标题，适合读书解说/成长/价值观）
 
 **决策树判定留痕（必填，四问逐条给结论）**
@@ -352,6 +354,12 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - [ ] 方案三·墨绿深夜 `#050f0a → #0a1f14`（自然质感）
 - [ ] 方案四·暖棕烛光 `#120a04 → #1f1008`（温暖故事感）
 > 不回复默认方案一
+
+### 浅底背景色方案（选 `vox-light` / 浅底模式时改用此组，纯色实底无渐变）
+- [ ] 浅一·清爽薄荷 底 `#F4F8F7` + 白卡 `#FFFFFF` + 描边 `#C9D8D3` + 翠绿 `#0F9D78` + 深墨绿字 `#17312B`（默认，技术科普/AI，微信视频号最清爽）
+- [ ] 浅二·暖米纸 底 `#F7F4EE` + 赭黄 `#C8872B` + 深褐字 `#2C2418`（人文/阅读/成长）
+- [ ] 浅三·冷调石灰 底 `#F2F4F7` + 蓝 `#2F6FE0` + 深灰字 `#1B2430`（商业/数据/分析）
+> 浅底模式下三件事必须同步改：① 字幕改深色 + 浅色 textShadow；② 整片渐隐遮罩与底色同色（**不得用黑色**，否则片尾压黑）；③ 禁用一切发光滤镜，层级靠描边 + 白卡 + 字重。详见 visual-system.md「`vox-light`」。
 
 ### 语音风格（已锁定，不询问、不判断）
 | 项目 | 取值 | 说明 |
@@ -400,9 +408,14 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 ### Step 4 · Remotion 实现
 
-- [ ] 复制 code-templates.md 的模板：StarfieldDrift、Scene.tsx、index.tsx、effects 骨架
+- [ ] **新项目统一复用全局 Chrome Headless Shell（强制）**：浏览器固定存放在 `~/.remotion/chrome-headless-shell/mac-arm64/chrome-headless-shell-mac-arm64/chrome-headless-shell`，新建项目的 `remotion.config.ts` 必须调用 `Config.setBrowserExecutable()` 指向该路径，禁止让每个项目在 `node_modules/.remotion` 重复下载 175MB 浏览器文件
+  - 开工前验证：`test -x "$HOME/.remotion/chrome-headless-shell/mac-arm64/chrome-headless-shell-mac-arm64/chrome-headless-shell"`
+  - 若全局浏览器不存在，先提示操作者安装/复制，不得直接触发项目级下载
+  - 已有项目不主动修改；本规则只作用于本 Skill 后续创建的新 Remotion 项目
+  - Remotion 升级后若提示浏览器版本不兼容，才更新全局文件；不要删除项目 `node_modules` 后重新下载一份
+- [ ] 复制 code-templates.md 的模板：remotion.config.ts、StarfieldDrift、Scene.tsx、index.tsx、effects 骨架
 - [ ] 生成 scenes.json（含顶层 `styleMode`、每镜 `shot_type`、narration、subtitleSegments）
-- [ ] **底色按 styleMode**：`tech-mint` → Effect 用所选背景色方案渐变（不用实色/transparent 走星空）；`kurzgesagt` → 单一深色块纯底、无渐变无星空；`vox` → 近黑纯底、图表铺满
+- [ ] **底色按 styleMode**：`tech-mint` → Effect 用所选背景色方案渐变（不用实色/transparent 走星空）；`kurzgesagt` → 单一深色块纯底、无渐变无星空；`vox` → 近黑纯底、图表铺满；`vox-light` → 所选浅底方案纯色实底（默认 `#F4F8F7`），色板集中到 `src/effects/palette.ts`，字幕转深色、渐隐遮罩同底色、禁用发光
 - [ ] **画面兑现检查（强制卡点·纯代码审查）**：逐 scene 对照 subtitle，把其中的**可视化素材**落到 Effect 画面上，不得只显示标题。**通过阅读 Effect 代码核对，不通过渲染关键帧验证**
   - 检查方法：把 subtitle 拆成「关键名词 / 数据 / 对比 / 流程 / 枚举」5类元素，逐个确认在 Effect 里有对应视觉呈现
   - 例：subtitle 含「单线程 vs 多线程」→ 画面必须有左右对比；含「内存飙升」→ 必须有增长可视化；含「版本混乱」→ 必须有多元素散布；含「①②③④」→ 必须逐项展开
@@ -576,6 +589,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - ❌ 依赖会话上下文中的草稿内容生成产物，不重新 read `draft-review.md`（用户可能已直接改文件，上下文版本随时过期；记忆≠文件）
 - ❌ Step3/5 开工前未跑 `node scripts/check-draft-sync.mjs`（草稿-scenes.json 一致性机械门禁，不一致不得继续）
 - ❌ 复制其他项目的 `node_modules`（native binding 按机器架构解析，跨项目复制必缺平台二进制；一律 `npm install`，装完用 `npx tsc --noEmit` 做编译烟雾测试）
+- ❌ 新项目让 Remotion 自动下载项目级 Chrome Headless Shell 到 `node_modules/.remotion`——必须通过 `Config.setBrowserExecutable()` 复用 `~/.remotion/chrome-headless-shell/` 中的全局浏览器；全局文件缺失时先提示安装，不得静默重复下载
 - ❌ 未经用户确认 styleMode 直接按默认 tech-mint 写代码（样式确认表必须含 styleMode 选择项）
 - ❌ 凭美学/直觉选 styleMode——必须走 visual-system.md「风格选择决策树」，并在样式确认表填四问判定留痕
 - ❌ 草稿里产出中英对照字幕（默认纯中文；操作者明确要求双语才做）

@@ -292,7 +292,8 @@ const ttsChatTTS = (text, out) => {
 };
 
 const tts = TTS_ENGINE === "chattts" ? ttsChatTTS : ttsEdge;
-const dur = (f) => Number(execFileSync("ffprobe", ["-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1", f], { encoding: "utf8" }).trim());
+const FFPROBE = "/opt/homebrew/bin/ffprobe";
+const dur = (f) => Number(execFileSync(FFPROBE, ["-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1", f], { encoding: "utf8" }).trim());
 const concat = (files, out) => execFileSync("ffmpeg", ["-y", "-i", `concat:${files.join("|")}`, "-acodec", "copy", out], { timeout: 10000 });
 
 for (const scene of data.scenes) {
@@ -329,7 +330,8 @@ const AUDIO_DIR = resolve(__dirname, `../public/scenes/${SLUG}/audio`);
 const PAD = Number(process.env.PAD ?? 0);
 
 const data = JSON.parse(readFileSync(SCENES_PATH, "utf8"));
-const dur = (f) => Number(execFileSync("ffprobe", ["-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1", f], { encoding: "utf8" }).trim());
+const FFPROBE = "/opt/homebrew/bin/ffprobe";
+const dur = (f) => Number(execFileSync(FFPROBE, ["-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1", f], { encoding: "utf8" }).trim());
 
 let total = 0;
 for (const scene of data.scenes) {
@@ -393,7 +395,7 @@ const PYTHONPATH = JSON.parse(readFileSync("/Users/sunzhenchao/.claude/skills/ve
 if (!existsSync(AUDIO_DIR)) mkdirSync(AUDIO_DIR, { recursive: true });
 const data = JSON.parse(readFileSync(SCENES_PATH, "utf8"));
 
-const dur = (f) => Number(execFileSync("ffprobe", ["-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1",f],{encoding:"utf8"}).trim());
+const dur = (f) => Number(execFileSync("/opt/homebrew/bin/ffprobe", ["-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1",f],{encoding:"utf8"}).trim());
 const concat = (files, out) => execFileSync("ffmpeg",["-y","-i",`concat:${files.join("|")}`,"-acodec","copy",out],{timeout:10000});
 const ttsEdge = (text, out) => execFileSync("python3",["-m","edge_tts","--voice",VOICE,"--rate",RATE,"--text",text,"--write-media",out],{timeout:30000});
 
@@ -616,6 +618,39 @@ export default VoxChart;
 ```
 
 > **EFFECT_MAP 注册**：在 Scene.tsx 顶部把 `ImageShot`、`KurzOneConcept`、`VoxChart` 及各 `{sceneId}-{Effect}` 加入 `EFFECT_MAP`。`shot_type != "effect"` 的 scene，`effect` 字段填 `"ImageShot"` 并配 `asset` 路径。
+
+## 15A. `remotion.config.ts`（新项目强制复用全局 Chrome）
+
+> Chrome Headless Shell 统一安装一次到 `~/.remotion/chrome-headless-shell/`。所有后续新项目通过 `Config.setBrowserExecutable()` 指向全局可执行文件，避免每个项目在 `node_modules/.remotion` 重复下载约 175MB。已有项目不主动修改。
+
+```ts
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { Config } from "@remotion/cli/config";
+
+const GLOBAL_CHROME = join(
+  homedir(),
+  ".remotion",
+  "chrome-headless-shell",
+  "mac-arm64",
+  "chrome-headless-shell-mac-arm64",
+  "chrome-headless-shell"
+);
+
+Config.setBrowserExecutable(GLOBAL_CHROME);
+Config.setVideoImageFormat("jpeg");
+Config.setOverwriteOutput(true);
+Config.setCodec("h264");
+```
+
+**创建项目后的机械检查**：
+
+```bash
+test -x "$HOME/.remotion/chrome-headless-shell/mac-arm64/chrome-headless-shell-mac-arm64/chrome-headless-shell" \
+  && "$HOME/.remotion/chrome-headless-shell/mac-arm64/chrome-headless-shell-mac-arm64/chrome-headless-shell" --version
+```
+
+> 当前目录结构针对 Apple Silicon（mac-arm64）。如果平台变化，按 `process.platform` / `process.arch` 维护对应的全局子目录；不要退回项目级重复下载。
 
 ## 15. package.json（项目根，`<Name>` 替换为 Composition 名）
 
@@ -999,7 +1034,7 @@ execFileSync("mv", [norm, outAbs]);
 console.log(`[tts-single] 已归一化 -16.60 LUFS`);
 
 // ── 4. 同步时长 ──
-const dur = (f) => Number(execFileSync("ffprobe", ["-v","error","-show_entries","format=duration",
+const dur = (f) => Number(execFileSync("/opt/homebrew/bin/ffprobe", ["-v","error","-show_entries","format=duration",
   "-of","default=noprint_wrappers=1:nokey=1", f], { encoding: "utf8" }).trim());
 const audio = dur(outAbs);
 const tail  = Number(scene.tailSec ?? 0);
