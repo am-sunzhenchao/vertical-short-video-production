@@ -12,13 +12,12 @@ os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 SCRIPT_DIR        = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE       = os.path.join(SCRIPT_DIR, "config.json")
 PRESETS_FILE      = os.path.join(SCRIPT_DIR, "voice_presets.json")
-SKILL_SPEAKERS_DIR = os.path.join(SCRIPT_DIR, "speakers")
 
 with open(CONFIG_FILE, encoding="utf-8") as _f:
     _cfg = json.load(_f)
 CHATTS_ROOT  = _cfg["chatts_root"]
-# 优先用 skill 内置 speakers，找不到再回退到 ChatTTS/speakers/
-SPEAKERS_DIRS = [SKILL_SPEAKERS_DIR, os.path.join(CHATTS_ROOT, "speakers")]
+# 音色 embedding 唯一存放在 ChatTTS/speakers/，skill 不内置副本
+SPEAKERS_DIRS = [os.path.join(CHATTS_ROOT, "speakers")]
 
 sys.path.insert(0, CHATTS_ROOT)
 os.chdir(CHATTS_ROOT)

@@ -5,7 +5,7 @@ description: Use when producing a Chinese vertical (1080×1920) narrated short v
 
 # 竖版中文短视频制作
 
-> 详细视觉规范见 `visual-system.md`，代码模板见 `code-templates.md`，单镜镜头语言（语法选用 + 运镜参数）见 `references/镜头语言.md`
+> 详细视觉规范见 `references/visual-system.md`，动效模式与镜头语言见 `references/motion-system.md`，科学事实审查见 `references/scientific-review.md`，代码模板见 `references/code-templates.md`
 
 ---
 
@@ -64,8 +64,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - 平台：微信视频号 + 抖音
 - 视频：1080×1920，25fps；封面：1080×1440
 - 栈：Remotion 4.x + ChatTTS / edge-tts + @resvg/resvg-js
-- **视觉风格模式**：`tech-mint`（默认·深空薄荷）/ `kurzgesagt`（扁平矢量科普）/ `vox`（图表驱动解释）/ `vox-light`（图表驱动·清爽浅底）/ `doodle-note`（手绘读书笔记），Step2 按**决策树**锁定，详见 visual-system.md
-- **镜头语言**：单镜画面语法（KG-y1/T0/W1/I1/K1/H1/E1/C1/V1/Z1 十种），逐镜标注 `shotLang`，须落在所选 styleMode **兼容矩阵**内（主力 1 个 + 辅助 2~3 个），运镜参数与节奏密度详见 `references/镜头语言.md`
+- **视觉主题**：默认自动采用 `tech-mint` 作为兼容主题；模型先按知识内容选择逐镜 `visualGrammar` 与 `motionMode`。只有操作者明确要求时才手动覆盖 `styleMode`；现有主题名称继续兼容，详见 `references/visual-system.md` 与 `references/research-workflow.md`
 - TTS 引擎：ChatTTS（默认）或 Edge-TTS（通过 `TTS_ENGINE` 环境变量切换）
 - 默认配音：**强制 `gentle_female`（温和女声），不再判断/询问其它音色** / Edge-TTS `zh-CN-YunxiNeural`（云希，男声）
 
@@ -87,17 +86,20 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 ## 制作流程（强约束：Step1/2 未通过不得进入 Step3）
 
-### Step 1 · 素材盘点（只读）
+### Step 1 · 素材盘点与研究（只读输入，主动核查）
 
-- [ ] ls 列出所有图片/视频/文档，逐一阅读
-- [ ] **原始素材落盘 `source.md`**（用户粘贴的文本也要落盘，作为 Step2 压缩比统计与忠实度核对的基准）
-- [ ] 输出《素材盘点》：已有素材列表 + 缺口 + 核心论点
+- [ ] 盘点并逐一阅读输入的文章、资料摘要、笔记、图片、视频和引用链接；用户粘贴的文字也必须落盘为 `source.md`
+- [ ] 将输入视为研究起点，而非默认正确的最终脚本；区分原文明确陈述、可由来源支持的事实、模型推断、比喻和未知项
+- [ ] 按 `references/research-workflow.md` 执行研究：提取核心问题与可核验主张，核查关键事实、数字、因果和比较，补充必要背景；优先一手来源、官方/学术来源与高质量综述
+- [ ] 建立来源记录与主张核验表；不得编造来源。高风险主张证据不足时，标记待核验并阻止其作为确定事实进入旁白
+- [ ] 输出《素材与研究盘点》：输入摘要、核心问题、主要结论、证据缺口、可补充解释、来源清单
 
-### Step 2 · 草稿生成 + 评测优化闭环 + Review（强制卡点）
+### Step 2 · 叙事设计、视觉规划、评测优化与 Review（强制卡点）
 
-- [ ] **按 visual-system.md「风格选择决策树」四问判定 `styleMode`**，把逐问结论写进样式确认表（操作者已给参考片则风格由参考片决定，只判定可行性）
+- [ ] 基于研究结果组织完整视频叙事，不机械照搬原文顺序；补充内容必须服务核心问题并有依据，避免无限扩写
+- [ ] **不要求操作者先选视觉风格**：按每个知识点自动选择 `visualGrammar`（如科学示意图、图表、时间线、对照、结构拆解、动态文字），再匹配 `motionMode` 与现有组件；整片使用统一视觉主题。只有操作者明确要求或给出参考片时才覆盖主题，规则见 `references/visual-system.md`
+- [ ] 按 `references/research-workflow.md` 输出研究摘要、叙事大纲、逐镜规划与结构化 `motionPlan`，确保每镜的知识目标、画面表达、动效和旁白一致
 - [ ] 写全片逐句旁白，切 N 个 scene，每 scene 标注 Effect/配图/纯文字
-- [ ] **分镜表每镜标注镜头语言代号**（KG-y1/T0/W1/I1/K1/H1/E1/C1/V1/Z1，见 `references/镜头语言.md`）：主力语法与 styleMode 对齐，辅助语法查兼容矩阵；信息族（C1/I1/W1/K1）不连排三镜
 - [ ] **旁白与字幕一律纯中文**，不产出中英对照（除操作者明确要求双语）
 - [ ] **草稿须覆盖 HKRR 四要素**（见下表），缺项须在草稿中注明补充方案
 - [ ] **以 markdown 呈现草稿**
@@ -106,12 +108,12 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - [ ] 草稿写完后立即执行「7维度量化评测」（见下方），按评测结果自动优化迭代
 - [ ] **执行「文稿压缩比统计」**（见下方），产出压缩比读数 + 精简内容归纳 + 核心论点保留清单 + 语速核对（压缩比只报数、不设阈值）
 - [ ] **执行「衔接连贯性检查」**（见下方），逐相邻镜核对叙事过渡与画面延续，缺过渡处补过渡镜
-- [ ] 评测通过（总分≥8且核心维度1-5无≤5）后，呈现最终草稿 + 评测表 + 优化摘要 + **样式确认表**，**停下来等 review**
-- [ ] **草稿落盘**：将最终草稿（含场景表、样式确认表、评测结果、**文稿压缩比统计**、**衔接连贯性检查表**）写入项目目录下 `draft-review.md` 文件，方便用户直接在文件中修改草稿和样式，减少交互轮次
-- [ ] 用户修改完成后，**必须重新 read `draft-review.md` 文件**以获取最新草稿，再进入 Step 3。**禁止依赖会话上下文中的草稿记忆**——用户随时可能直接改文件，上下文里的版本随时过期。进入 Step3/4/5 任何一步前，先跑 `node scripts/check-draft-sync.mjs`（模板见 code-templates.md §20），不一致则同步后再继续
+- [ ] 评测通过（总分≥8且核心维度1-5无≤5）后，呈现研究摘要与来源、最终草稿、评测表、优化摘要、视觉规划摘要和需要操作者决策的事项，**停下来等 review**
+- [ ] **草稿落盘**：将研究摘要/来源、关键主张核验状态、最终草稿、场景表、视觉规划、评测结果、**文稿压缩比统计**与**衔接连贯性检查表**写入 `draft-review.md`；不再把风格选择表作为必填项
+- [ ] 用户修改完成后，**必须重新 read `draft-review.md` 文件**以获取最新草稿，再进入 Step 3。**禁止依赖会话上下文中的草稿记忆**——用户随时可能直接改文件，上下文里的版本随时过期。进入 Step3/4/5 任何一步前，先跑 `node scripts/check-draft-sync.mjs`（模板见 references/code-templates.md §20），不一致则同步后再继续
 - [ ] 3轮迭代仍未通过时，呈现最优版本 + 剩余问题清单，让用户决定是否继续
 - [ ] 操作者明确说"通过/OK/开始"前，**不写一行代码**
-- [ ] **样式确认表须与草稿一起呈现**，不得在草稿通过后才单独询问
+- [ ] 若操作者明确要求自定义视觉主题，将主题覆盖记录在 `draft-review.md`；默认不单独打断流程询问风格
 
 #### HKRR 草稿检查表
 
@@ -201,7 +203,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 #### 文稿压缩比统计（草稿落盘前必须执行）
 
-把「原始素材」压成「口播讲解稿」，压缩比是**参考性观察指标**，用来看清改编幅度：偏高说明书面语残留多（读起来可能拗口），偏低说明改动大（要重点核对论点有没有丢）。用 `scripts/script-stats.mjs`（见 code-templates.md）计算，禁止手工口算字数（易错）。
+把「原始素材」压成「口播讲解稿」，压缩比是**参考性观察指标**，用来看清改编幅度：偏高说明书面语残留多（读起来可能拗口），偏低说明改动大（要重点核对论点有没有丢）。用 `scripts/script-stats.mjs`（见 references/code-templates.md）计算，禁止手工口算字数（易错）。
 
 > **压缩比不设上下限，不作为门禁**。唯一的硬门禁是「核心论点保留清单」——只要论点无丢失，压缩比高低都放行。内容完整性优先于篇幅控制。
 
@@ -325,31 +327,34 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 [如有残留问题] **待用户决策项**：...
 ```
 
-**样式确认表（草稿通过后必须一并输出，等用户确认后再写代码）：**
+**视觉主题覆盖（仅在操作者明确要求时出现；默认自动选择，不作为必填确认表）：**
 
 ```
-## 样式确认
+## 视觉主题（可选覆盖）
 
-### 风格与色板（决策树一步锁定，全片统一）
+### styleMode（全片统一；默认自动采用 tech-mint 兼容主题）
+- [ ] `tech-mint`·深空薄荷（默认，星空+薄荷绿，适合 AI/技术/工程题材）
+- [ ] `kurzgesagt`·扁平矢量科普（纯色块+高饱和撞色+一镜一概念，适合科普/原理/抽象概念）
+- [ ] `vox`·图表驱动解释（口播驱动+图表即主体+标注线圈红，适合分析/观点/数据/复盘）
+- [ ] `vox-light`·图表驱动解释·浅底变体（同 `vox` 叙事，换清爽浅底色板，适合微信视频号白色信息流）
+- [ ] `doodle-note`·手绘读书笔记（浅纸底+纯黑单线+逐笔绘制+常驻栏目标题，适合读书解说/成长/价值观）
 
-**决策树判定留痕（必填，逐问给结论）**
+> 默认不询问，系统按知识表达需要自动规划逐镜 visualGrammar；只有操作者明确要求换主题时才使用以下覆盖项。
+> 操作者提供参考片时，将其作为可选主题参考，并检查素材可行性与视觉一致性。
+> 选 kurzgesagt/vox/doodle-note 时，继续遵守对应背景与装饰限制，避免 AI slop。
 
-| # | 问题 | 本片结论 | 排除了谁 |
-|---|---|---|---|
-| ① | 有精确的字和数吗 | | |
-| ② | 讲机制还是讲观点 | | |
-| ③ | 技术感还是人味 | | |
-| ④ | 素材形态 / 一致性风险 | | |
+### 背景色方案（Effect 底色，仅 tech-mint 模式生效）
+- [ ] 方案一·深海蓝黑 `#0d0d1a → #1a1a3a`（默认，稳重科技感）
+- [ ] 方案二·深紫星云 `#0e0618 → #1d0a35`（神秘感强）
+- [ ] 方案三·墨绿深夜 `#050f0a → #0a1f14`（自然质感）
+- [ ] 方案四·暖棕烛光 `#120a04 → #1f1008`（温暖故事感）
+> 旧项目兼容项。若操作者明确指定 Huashu 色板，则以记录在 `draft-review.md` 与 `scenes.json` 中的实际 HEX 值为准，不叠加/混用旧渐变方案。
 
-**选定结果**
-
-| styleMode | 色板 | 内容信号 |
-|---|---|---|
-| （填入） | （填入） | （填入简要理由） |
-
-> 不回复默认 `tech-mint + navy`。色板六键色值见 visual-system.md Step B。
-> 操作者给参考片 → 风格由参考片决定，跳过①~③，只填④可行性。
-> 详见 visual-system.md Step A「决策树」及「组合总表」。
+### 浅底背景色方案（选 `vox-light` / 浅底模式时改用此组，纯色实底无渐变）
+- [ ] 浅一·清爽薄荷 底 `#F4F8F7` + 白卡 `#FFFFFF` + 描边 `#C9D8D3` + 翠绿 `#0F9D78` + 深墨绿字 `#17312B`（默认，技术科普/AI，微信视频号最清爽）
+- [ ] 浅二·暖米纸 底 `#F7F4EE` + 赭黄 `#C8872B` + 深褐字 `#2C2418`（人文/阅读/成长）
+- [ ] 浅三·冷调石灰 底 `#F2F4F7` + 蓝 `#2F6FE0` + 深灰字 `#1B2430`（商业/数据/分析）
+> 浅底模式下三件事必须同步改：① 字幕改深色 + 浅色 textShadow；② 整片渐隐遮罩与底色同色（**不得用黑色**，否则片尾压黑）；③ 禁用一切发光滤镜，层级靠描边 + 白卡 + 字重。详见 references/visual-system.md「`vox-light`」。
 
 ### 语音风格（已锁定，不询问、不判断）
 | 项目 | 取值 | 说明 |
@@ -363,42 +368,21 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 | 项目 | 当前默认 | 是否修改 |
 |------|---------|---------|
 | 语言 | **纯中文单语**（不做中英对照） | |
-| 字号 | 70px（固定，全模式统一） | |
-| 颜色 | 暗底用 palette.ink（浅色）；亮底用 palette.ink（深色）+ 浅色 textShadow | |
+| 字号 | 70px（`doodle-note` 浅底模式用 64px 深色字） | |
+| 颜色 | #e8fff3（浅薄荷白）；`doodle-note` 用 #1a1a1a | |
 | 动效 | 逐行串行淡入淡出 | |
-> 不回复保持默认。**双语字幕不是默认能力**，需要操作者明确提出才做。
+> 若选择 Huashu 色板，字幕文字色、强调色和背景需按同一套色板重新核对，不能只改 Effect 主色。
+> 不回复保持默认。**双语字幕不是默认能力**，需要操作者明确提出才做（双行行组会顶掉"任何时刻只有一行"的门禁，须同步放宽）。
 ```
 
-### Step 2.5 · 样式预览（强制卡点，Step 3 开工前必须通过）
-
-草稿与样式确认通过后，在进入 Step 3 写任何业务 Effect 前，先渲染一帧「样式探针帧」供操作者人眼核验色板 + 字号效果。
-
-- [ ] **新建探针 Effect**（`S00-StyleProbe.tsx`），展示该片将出现的主要文字层级：
-
-  | 区域 | 内容 | 字号 |
-  |---|---|---|
-  | 顶部眉题 | 「栏目标题示例」+ palette.accent 横线 | 34px |
-  | 中部大标题 | 「这里是镜内大标题钩子句」 | 48px |
-  | 中部正文 | 「这里是正文叙述句，展示主力字号效果」 | 40px |
-  | 中部小注 | 「辅助小注 / 条件说明示例」 | 36px |
-  | badge 示例 | 「原因一」胶囊 | 24px |
-  | 底部字幕带 | 「字幕示例不超过十三字」 | 70px |
-
-  - 全屏底色用 `palette.bg`；所有颜色引用 `palette.ts` 常量，不硬编码
-  - styleMode = `tech-mint` 时叠加 StarfieldDrift 透明层
-
-- [ ] **渲染探针帧**（**此处是唯一允许主动运行 `remotion still` 的场景**）：
-  ```bash
-  npx remotion still src/index.tsx StyleProbe --frame=0 --output=style-probe.png
-  ```
-  输出到项目根目录 `style-probe.png`，方便直接查看。review 通过后删除此文件。
-
-- [ ] **呈现给操作者，停下来等 review**：
-  - ✅ 通过 → 删除 `S00-StyleProbe.tsx`，进入 Step 3
-  - ❌ 调色/调字号 → 修改 `palette.ts` 或字号常量，重新渲染，再次 review
-  - ❌ 换风格/色板 → 回到 Step A 重新决策，重新生成样式确认表，再跑本步骤
-
 ### Step 3 · 视觉素材
+
+- [ ] 读取 `references/motion-system.md`，按知识关系选择 12 种标准动效模式之一；每镜一个主模式，最多一个辅助模式
+- [ ] 先查组件映射表/Effect 库，再选现有组件；仅当无法清楚表达知识关系时才新增组件
+- [ ] 全片锁定一套视觉主题与一套色板。可沿用现有 `styleMode`，也可采用 Huashu 色板，但必须记录色板名与实际 HEX 值；不得逐镜自由选色或混合多个色板
+- [ ] 镜头动作遵循 `references/motion-system.md`：看得清就停、过渡缓而重音快、推拉有来回，避免连续镜头重复同一运镜
+
+- [ ] **开工前先跑 `node scripts/check-draft-sync.mjs`**：确认 scenes.json 与最新 `draft-review.md` 一致，不一致先同步（机械门禁，防止草稿已被用户修改而沿用旧版）
 - [ ] **每个 scene 在 scenes.json 标注 `shot_type`，Step3 按标签路由素材来源**（见下表），标签在 Step2 编剧时确定
 - [ ] 按 scene 类型决定素材来源（algorithmic-art / frontend-design / canvas-design / 手写SVG）
 - [ ] **H 要素场景**：优先用动态 Effect（爆炸、慢镜、粒子）制造视觉爽感；猎奇内容配高饱和撞色
@@ -420,7 +404,6 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 | `doodle` | 概念隐喻手绘线稿，一镜一隐喻 | **代码手绘 SVG**（本 skill 手绘库，非生图；逐笔绘制动效） | tsx 组件 | doodle-note |
 
 > **路由原则**：**有字有数走 `infographic`/`chart`（信息图/精绘图表，数字精确）；没字看气氛走 `flat`/`atmosphere`（生图）。** 混用会翻车：用生图画数据→数字乱码；用信息图画氛围→像 PPT 模板。
-> **shot_type × 镜头语言对应**：`effect`→K1 为主；`infographic`/`chart`→C1；`process`→I1/W1；`flat`→KG-y1/T0/E1；`atmosphere`→Z1/T0/V1/E1；`doodle`→T0/W1。逐镜 `shotLang` 须查 `references/镜头语言.md` 兼容矩阵，与 styleMode 冲突的禁用。
 > **静帧即首帧**：所有 PNG 产物都可作为后续图生视频（万象/即梦）的首帧输入，链路互通。
 > **提示词规范**：`flat`/`atmosphere` 生图前先用 prompt-generator 生成规范提示词，必须带 AI slop 负向约束。
 
@@ -431,16 +414,15 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
   - 若全局浏览器不存在，先提示操作者安装/复制，不得直接触发项目级下载
   - 已有项目不主动修改；本规则只作用于本 Skill 后续创建的新 Remotion 项目
   - Remotion 升级后若提示浏览器版本不兼容，才更新全局文件；不要删除项目 `node_modules` 后重新下载一份
-- [ ] 复制 code-templates.md 的模板：remotion.config.ts、StarfieldDrift、Scene.tsx、index.tsx、effects 骨架
-- [ ] 生成 scenes.json（含顶层 `styleMode`、每镜 `shot_type`、`shotLang`（镜头语言代号）、narration、subtitleSegments）
-- [ ] **Effect 运镜按该镜镜头语言的运镜倾向实现**（`references/镜头语言.md` 第四节参数表：缓推 15–38帧 sineInOut、快推 6–9帧、砸入 4帧 scale 1.55→0.94→1.0 一镜一次；快推+砸入+甩镜占镜头数 1/3 以下，不连三镜往里推）
-- [ ] **底色按 styleMode**：`tech-mint` → Effect 用所选背景色方案渐变（不用实色/transparent 走星空）；`kurzgesagt` → 单一深色块纯底、无渐变无星空；`vox` → 近黑纯底、图表铺满；`vox-light` → 所选浅底方案纯色实底（默认 `#F4F8F7`），色板集中到 `src/effects/palette.ts`，字幕转深色、渐隐遮罩同底色、禁用发光
-- [ ] **画面兑现检查（强制卡点·纯代码审查）**：逐 scene 对照 subtitle，把其中的**可视化素材**落到 Effect 画面上，不得只显示标题。**通过阅读 Effect 代码核对，不通过渲染关键帧验证**
+- [ ] 复制 references/code-templates.md 的模板：remotion.config.ts、StarfieldDrift、Scene.tsx、index.tsx、effects 骨架
+- [ ] 生成 scenes.json（含顶层 `styleMode`、每镜 `shot_type`、narration、subtitleSegments）
+- [ ] **底色按锁定的 visualTheme 与 styleMode**：如果选用 Huashu 色板，先将实际 HEX 值统一写入 `src/effects/palette.ts`，覆盖所有硬编码颜色；否则沿用兼容规则：`tech-mint` → Effect 用所选背景色方案渐变（不用实色/transparent 走星空）；`kurzgesagt` → 单一深色块纯底、无渐变无星空；`vox` → 近黑纯底、图表铺满；`vox-light` → 所选浅底方案纯色实底（默认 `#F4F8F7`），色板集中到 `src/effects/palette.ts`，字幕转深色、渐隐遮罩同底色、禁用发光
+- [ ] **画面兑现检查（强制卡点）**：逐 scene 对照 subtitle 与 motionPlan，把关键名词、数据、对比、流程、枚举和因果关系落到画面；代码审查是第一道检查，但不能替代关键帧/短片段视觉验收
   - 检查方法：把 subtitle 拆成「关键名词 / 数据 / 对比 / 流程 / 枚举」5类元素，逐个确认在 Effect 里有对应视觉呈现
   - 例：subtitle 含「单线程 vs 多线程」→ 画面必须有左右对比；含「内存飙升」→ 必须有增长可视化；含「版本混乱」→ 必须有多元素散布；含「①②③④」→ 必须逐项展开
 - [ ] **编译验证用 `npx tsc --noEmit`**（每批 Effect 写完后执行一次）：只做类型检查，不产生任何输出文件，不污染 `out/` 目录
   - **K 要素场景且 durationSec > 8s**：禁止只用「锚点型 Effect」（WallHeader 等仅标题的组件），必须配「内容型 Effect」（数据可视化/对比卡片/流程拆解）
-- [ ] **画面连贯性检查（强制卡点·纯代码审查）**：逐相邻 Effect 对照，确认三点——① 视觉锚点承接（元素/位置/强调色至少一项延续，不得每镜另起一套视觉语言）；② 入场方向与上镜出场不冲突（避免相邻镜反向滑动打架）；③ 过渡镜 Effect 必须"承上启下"（画面同时出现上镜元素的收束形态与下镜元素的雏形），不能只放一句标题
+- [ ] **画面连贯性检查（强制卡点）**：逐相邻 Effect 对照视觉锚点、构图变化、入场/出场方向、镜头动作与信息层级；连续三镜不得都向内推，重音镜头必须有理由；过渡应承接叙事或空间关系，不得只放一句标题
 - [ ] 字幕：固定70px，每次只显示一行（≤13视觉字符），串行逐行，三级切割（强标点→逗号→机械截断），禁 nowrap
 - [ ] **字幕分片去尾标点**：每个分片展示时，去掉末尾的标点符号（，,。.；;、！!？?：:… 等），只保留正文；标点仅用于切割断句，不参与显示
 - [ ] 标题文字：不超过16个字符，超出部分截断，加 `whiteSpace: "nowrap"`
@@ -479,7 +461,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
   node scripts/sync-durations.mjs
   ```
   > ChatTTS `InferCodeParams` 不支持 `speed` 参数，语速调整只能走 ffmpeg `atempo`（建议 0.85~0.95，超出范围音质明显损失）。
-- [ ] **单场景重新生成**（旁白修改后）：全量重跑浪费时间，用 `scripts/tts-single.mjs` 只重新生成指定 scene（模板见 code-templates.md §21）：
+- [ ] **单场景重新生成**（旁白修改后）：全量重跑浪费时间，用 `scripts/tts-single.mjs` 只重新生成指定 scene（模板见 references/code-templates.md §21）：
   ```bash
   node scripts/tts-single.mjs --scene S03   # 生成 + 归一化 + sync-durations 一步完成
   ```
@@ -583,14 +565,14 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 ## 交付边界（默认收尾，不主动越界）
 
 - **默认交付物 = Step4 项目代码 + Step5 TTS 配音 + Step6 封面/文案**。三者产出后即视为完成，向用户交付并结束。
-- **不做关键帧渲染自检**：画面正确性靠 Step4「画面兑现检查（纯代码审查）」保证；不主动 `remotion still` 渲染帧来目视验证。
-- **编译验证用 `tsc --noEmit`，不用 `remotion still`**：每次写完 Effect 代码需确认编译通过时，使用 `npx tsc --noEmit` 做类型检查，不得以「验证编译」为由触发 `remotion still`——后者会在 `out/` 目录生成大量无用 PNG 文件，且违反上一条规则。
+- **视觉验收采用分级策略**：普通代码改动先做类型检查；每条新视频必须检查开头、最复杂知识镜、关键转折和结尾的关键帧/短片段。试点期或新增组件必须做正常速度短片段验收。临时帧输出到 `/tmp/` 或项目 `qa/`，不得污染 `out/`。
+- **编译验证用 `tsc --noEmit`；视觉验收单独进行**：使用 `npx tsc --noEmit` 做类型检查；如需关键帧，输出到 `/tmp/` 或 `qa/`，绝不写入 `out/`。
   ```bash
   npx tsc --noEmit   # ← 编译验证的正确方式，不产生任何输出文件
   ```
 - **`out/` 目录只用于最终出片**：`out/` 目录仅供 `remotion render`（`npm run render`）输出 mp4 使用，不得写入任何 PNG 或中间文件。若操作者要求渲染关键帧，输出到 `/tmp/` 而非项目 `out/` 目录。
 - **不渲染 mp4**：默认不跑 `remotion render`。用户可自行 `npm run dev` 预览、`npm run render` 出片。
-- 仅当**操作者明确要求**「渲染看看 / 出 mp4 / 帮我核对某镜画面」时，才渲染关键帧或成片。
+- 默认不渲染最终 MP4；但关键帧/短片段验收属于必要 QA，可按 `references/motion-system.md` 选择有限镜头验证。完整出片仍需操作者明确授权。
 
 ---
 
@@ -609,32 +591,32 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - ❌ Step3/5 开工前未跑 `node scripts/check-draft-sync.mjs`（草稿-scenes.json 一致性机械门禁，不一致不得继续）
 - ❌ 复制其他项目的 `node_modules`（native binding 按机器架构解析，跨项目复制必缺平台二进制；一律 `npm install`，装完用 `npx tsc --noEmit` 做编译烟雾测试）
 - ❌ 新项目让 Remotion 自动下载项目级 Chrome Headless Shell 到 `node_modules/.remotion`——必须通过 `Config.setBrowserExecutable()` 复用 `~/.remotion/chrome-headless-shell/` 中的全局浏览器；全局文件缺失时先提示安装，不得静默重复下载
-- ❌ 未经用户确认 styleMode + 色板直接写代码（样式确认表必须含决策树判定留痕和选定结果）
-- ❌ 凭美学/直觉选 styleMode——必须走 visual-system.md Step A「决策树」，并在样式确认表填四问判定留痕
+- ❌ 把选择 styleMode 设为必经步骤，或因风格确认打断默认流程
+- ❌ 把视觉主题、知识表达方法和动效模式混为一谈；不得仅凭美学偏好决定逐镜画面表达
 - ❌ 草稿里产出中英对照字幕（默认纯中文；操作者明确要求双语才做）
+- ❌ 科普/科技/历史/数据内容没有完成 `references/scientific-review.md` 主张审查就进入视觉制作
+- ❌ 模型不写 `motionPlan` 就直接自由发挥动画代码；每镜没有明确主动效模式或堆叠多个主动作
+- ❌ 未查现有组件映射就新增近似 Effect；没有组件用途、禁用情形与回归样例的新增组件不得进入正式库
 - ❌ 未经操作者授意自动渲染 mp4
-- ❌ 以「验证编译」为由运行 `remotion still`——编译验证只用 `npx tsc --noEmit`；`remotion still` 会在 `out/` 目录堆积无用 PNG，且属于被禁止的视觉自检行为（⚠️ 唯一例外：Step 2.5 样式预览，明确授权运行一次，输出到项目根目录 `style-probe.png`，review 后删除）
-- ❌ 代码生成后主动渲染关键帧（`remotion still`）做视觉自检——画面兑现只在代码层面审查，视觉核对由操作者主动发起（Step 2.5 样式预览除外）
+- ❌ 用关键帧渲染代替类型检查；编译检查必须用 `npx tsc --noEmit`
+- ❌ 完全跳过视觉验收，仅凭阅读代码断言动画质量通过；关键帧输出不得写入 `out/`
 - ❌ 完成 Step6 后不收尾、继续渲染成片或反复自检（默认交付 = 代码+配音+封面，见「交付边界」）
 - ❌ 修改后默认渲染验证（仅按需验证）
 
 **视觉/风格/底色**
 - ❌ 视频底部进度条；顶部 eyebrow / 底部品牌带
 - ❌ 英文 chip/pill 短标（如 `[BUG]`）
-- ❌ `tech-mint` 下 Effect AbsoluteFill 实色背景（遮住 StarfieldDrift）；`kurzgesagt`/`vox` 则相反，必须纯色块底
+- ❌ 未记录视觉主题/色板的实际 HEX 值就开工；同片混用多套色板或让不同组件各自硬编码颜色
+- ❌ 兼容旧主题时，`tech-mint` 下 Effect AbsoluteFill 实色背景（遮住 StarfieldDrift）；`kurzgesagt`/`vox` 则相反，必须纯色块底
 - ❌ `kurzgesagt`/`vox` 模式仍挂 StarfieldDrift / 用渐变底 / 加漂浮粒子（退化成 AI slop）
 - ❌ `kurzgesagt` 一镜堆多概念（每镜只讲一件事、只放一个核心图形）
 - ❌ `vox` 无论证结构（须「抛问题→给背景→层层推进→落判断」，标注跟随口播逐帧点亮）
-- ❌ scenes.json 缺 `styleMode`（顶层）或 `shot_type`（每镜）字段——Step3 无法路由
-- ❌ 逐镜选镜头语言不查兼容矩阵（`shotLang` 与 styleMode 冲突 = 逐镜混搭画风；禁区的语言选了等于全片统一作废）
-- ❌ 镜头语言自带配色/字号（颜色一律 palette 六键、字号一律 Step C 梯度；H1 须去玻璃化，禁 blur 玻璃与霓虹发光）
-- ❌ 信息族镜头语言（C1/I1/W1/K1）连排三镜以上无喘气；K1 连用超过两镜（镜头语言是重音不是叙述）
-- ❌ 运镜无节奏：快推+砸入+甩镜占镜头数超 1/3、连三镜往里推、解说镜每镜慢推（= PPT）——见 references/镜头语言.md 第四节密度原则
-- ❌ 生图（`flat`/`atmosphere`）提示词不带 AI slop 负向串（定义见 visual-system.md）
+- ❌ scenes.json 缺 `styleMode`（顶层兼容字段）、`shot_type` 或 `visualGrammar`（每镜表达路由字段）——Step3 无法可靠路由
+- ❌ 生图（`flat`/`atmosphere`）提示词不带 AI slop 负向串（定义见 references/visual-system.md）
 - ❌ 用生图模型画数据图表/信息图（数字必糊）——有字有数走 designai-infographic-image 或 Remotion 精绘
 - ❌ Effect 内时间用百分比（用绝对帧数）
 - ❌ Effect 内 3D rotateY 翻页（竖屏变形）
-- ❌ Effect 字号不按 visual-system.md Step C 梯度——直接使用 ep5-v2 实测梯度，不重新推算（大标题 48–52px，正文 40–42px，小注 34–38px，badge 22–28px，字幕固定 70px）
+- ❌ Effect 字号过小（说明≥40px，标题≥80px，Badge≥28px）
 - ❌ Effect 内容元素 `top` 值小于 150px——顶部 0–150px 为平台留白区，内容从 `top: 150` 起；背景装饰层（全幅散点/粒子/纹理，无文字无图形）不受此限制
 - ❌ Effect 内短标签/短词（版本号、语言名、卡片标题、Badge）未加 `whiteSpace: "nowrap"` 导致换行
 - ❌ 配图 objectFit: cover（用 contain）
@@ -697,6 +679,8 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 ## Effect 库（按语义选用，主要用于 `tech-mint`；`kurzgesagt`/`vox` 见对应模板）
 
+> 本表是现有组件清单，不等于动效模式目录。选型先读 `references/motion-system.md`，再将模式映射到下方已有组件。
+
 | Effect | 类型 | 适用语义 | 视觉手法 |
 |---|---|---|---|
 | `CognitiveTrapEffect` | 内容型 | 看似简单/实为陷阱 | 汉字裂开→警示环+闪电 |
@@ -730,7 +714,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 | `designai-process-map` | process | 输出 mermaid → 图，默认 flowchart TD |
 | `script-visual-breakdown` | S2→S3 拆解 | 输入人物小传+剧本，输出多图参考结构化表格 |
 
-> `vox` 图表禁止用生图模型画（数字必糊），走 infographic 或 Remotion 精绘。AI slop 负向串定义见 visual-system.md「AI slop 红线」。
+> `vox` 图表禁止用生图模型画（数字必糊），走 infographic 或 Remotion 精绘。AI slop 负向串定义见 references/visual-system.md「AI slop 红线」。
 
 ### 场景表达手法（按 scene 语义）
 

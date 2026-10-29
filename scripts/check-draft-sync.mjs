@@ -1,60 +1,86 @@
 #!/usr/bin/env node
-// check-draft-sync.mjs — 草稿与 scenes.json 一致性强制门禁
-// 用法: node scripts/check-draft-sync.mjs [--draft <path>] [--scenes <path>]
-// 逻辑：从 draft-review.md 提取每个 scene 的旁白（**S{id}｜标题** 下首个 `> ` 引用行），
-//       与 scenes.json 的 narration/subtitle 逐镜比对；任一不一致 → 打印差异并 exit 1。
-// 目的：防止"操作者已修改草稿、但 scenes.json 仍是旧版"的静默漂移。
-//       生成任何产物（Effect / TTS / 封面）前必须先跑本脚本通过。
-import { readFileSync, existsSync } from "fs";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
+// 草稿与 scenes.json 一致性门禁。
+// 正式制作默认 fail-closed：缺草稿、缺 scenes.json、JSON 错误或场景未映射都失败。
+// 仅在明确的探索性工作流中可传 --allow-missing 跳过缺文件检查；不应用于交付。
+import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const arg = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
-
+const allowMissing = args.includes("--allow-missing");
 const DRAFT = arg("--draft") ?? resolve(__dirname, "../draft-review.md");
 const SCENES = arg("--scenes") ?? resolve(__dirname, "../public/scenes");
 
-if (!existsSync(DRAFT)) { console.log(`[check-draft-sync] 未找到 ${DRAFT}，跳过（无草稿可校验）`); process.exit(0); }
-
-let scenesPath = SCENES;
-if (!existsSync(scenesPath)) { console.log(`[check-draft-sync] 未找到 scenes 目录，跳过`); process.exit(0); }
-// scenes.json 可能在公共目录下的子目录
-import { readdirSync } from "fs";
-if (readdirSync(scenesPath).every(f => !f.endsWith(".json"))) {
-  const sub = readdirSync(scenesPath).find(d => existsSync(resolve(scenesPath, d, "scenes.json")));
-  if (sub) scenesPath = resolve(scenesPath, sub, "scenes.json"); else { console.log("[check-draft-sync] 未找到 scenes.json，跳过"); process.exit(0); }
-} else {
-  const jsonFile = readdirSync(scenesPath).find(f => f.endsWith(".json"));
-  scenesPath = resolve(scenesPath, jsonFile);
+function fail(message) {
+  console.error(`[check-draft-sync] ❌ ${message}`);
+  process.exit(1);
+}
+function missing(message) {
+  if (allowMissing) {
+    console.warn(`[check-draft-sync] ⚠️ ${message}；因显式传入 --allow-missing，本次跳过（不可作为交付门禁）`);
+    process.exit(0);
+  }
+  fail(`${message}。正式制作默认不允许跳过；若仅探索性工作请显式传入 --allow-missing`);
 }
 
-const review = readFileSync(DRAFT, "utf8");
-const data = JSON.parse(readFileSync(scenesPath, "utf8"));
+if (!existsSync(DRAFT)) missing(`未找到草稿文件 ${DRAFT}`);
+if (!existsSync(SCENES)) missing(`未找到 scenes 路径 ${SCENES}`);
 
-const blocks = review.split(/\*\*S(\d+)｜/);
+let scenesFile = SCENES;
+if (!/\.json$/i.test(scenesFile)) {
+  let entries;
+  try { entries = readdirSync(scenesFile, { withFileTypes: true }); }
+  catch { fail(`无法读取 scenes 路径 ${scenesFile}`); }
+  const directJson = entries.filter(e => e.isFile() && e.name.endsWith(".json"));
+  if (directJson.length === 1) {
+    scenesFile = resolve(scenesFile, directJson[0].name);
+  } else if (directJson.length > 1) {
+    fail(`目录 ${scenesFile} 下有多个 JSON 文件，请通过 --scenes 指定准确的 scenes.json`);
+  } else {
+    const nested = entries.filter(e => e.isDirectory()).map(e => resolve(scenesFile, e.name, "scenes.json")).filter(p => existsSync(p));
+    if (nested.length === 1) scenesFile = nested[0];
+    else if (nested.length > 1) fail(`在 ${scenesFile} 下找到多个 scenes.json，请通过 --scenes 指定准确文件`);
+    else missing(`未找到 scenes.json（搜索路径：${scenesFile}）`);
+  }
+}
+if (!existsSync(scenesFile)) missing(`未找到 scenes.json ${scenesFile}`);
+
+let review, data;
+try {
+  review = readFileSync(DRAFT, "utf8");
+  data = JSON.parse(readFileSync(scenesFile, "utf8"));
+} catch (err) {
+  fail(`读取草稿或解析 scenes.json 失败：${err.message}`);
+}
+if (!Array.isArray(data?.scenes) || data.scenes.length === 0) fail(`scenes.json 缺少非空 scenes 数组：${scenesFile}`);
+
+// 兼容格式：**S01｜标题** 后第一条 > 旁白行。也接受 **S01 | 标题**。
+const blocks = review.split(/\*\*S(\d+)\s*[｜|]/);
 const draftMap = {};
 for (let i = 1; i < blocks.length; i += 2) {
   const sid = "S" + blocks[i].padStart(2, "0");
-  const m = blocks[i + 1].match(/^> (.+)$/m);
+  const m = blocks[i + 1].match(/^>\s+(.+)$/m);
   if (m) draftMap[sid] = m[1].trim();
 }
+if (Object.keys(draftMap).length === 0) fail(`未能从 ${DRAFT} 提取场景旁白；请检查 **S01｜标题** + > 旁白格式`);
 
 const diffs = [];
+const missingScenes = [];
 for (const scene of data.scenes) {
+  if (!scene?.id) { missingScenes.push("(scene 缺少 id)"); continue; }
   const draft = draftMap[scene.id];
-  if (!draft) continue;
-  if (draft !== scene.subtitle && draft !== scene.narration) diffs.push(scene.id);
-}
-
-if (diffs.length) {
-  console.error(`[check-draft-sync] ❌ ${diffs.length} 个场景与 draft-review.md 不一致：${diffs.join(", ")}`);
-  console.error(`[check-draft-sync] draft-review.md 已被修改。请重新读取最新草稿并同步 scenes.json 后再继续。`);
-  for (const id of diffs) {
-    const scene = data.scenes.find(s => s.id === id);
-    console.error(`  ${id}\n    draft : ${draftMap[id]}\n    当前  : ${scene.subtitle}`);
+  if (!draft) { missingScenes.push(scene.id); continue; }
+  if (draft !== scene.subtitle && draft !== scene.narration) {
+    diffs.push({ id: scene.id, draft, current: scene.subtitle ?? scene.narration ?? "(缺少 subtitle/narration)" });
   }
+}
+if (missingScenes.length) fail(`以下场景未能在草稿中一一匹配：${missingScenes.join(", ")}。请补齐草稿或修正 scenes.json，不能静默跳过。`);
+if (diffs.length) {
+  console.error(`[check-draft-sync] ❌ ${diffs.length} 个场景与 draft-review.md 不一致：${diffs.map(d => d.id).join(", ")}`);
+  console.error(`[check-draft-sync] 请重新读取最新草稿并同步 scenes.json 后再继续。`);
+  for (const d of diffs) console.error(`  ${d.id}\n    draft : ${d.draft}\n    当前  : ${d.current}`);
   process.exit(1);
 }
-console.log(`[check-draft-sync] ✅ ${data.scenes.length} 镜全部与 draft-review.md 一致`);
+console.log(`[check-draft-sync] ✅ ${data.scenes.length} 镜全部与 draft-review.md 一致（${scenesFile}）`);
