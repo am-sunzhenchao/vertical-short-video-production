@@ -5,7 +5,7 @@ description: Use when producing a Chinese vertical (1080×1920) narrated short v
 
 # 竖版中文短视频制作
 
-> 详细视觉规范见 `visual-system.md`，代码模板见 `code-templates.md`
+> 详细视觉规范见 `visual-system.md`，代码模板见 `code-templates.md`，单镜镜头语言（语法选用 + 运镜参数）见 `references/镜头语言.md`
 
 ---
 
@@ -65,6 +65,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - 视频：1080×1920，25fps；封面：1080×1440
 - 栈：Remotion 4.x + ChatTTS / edge-tts + @resvg/resvg-js
 - **视觉风格模式**：`tech-mint`（默认·深空薄荷）/ `kurzgesagt`（扁平矢量科普）/ `vox`（图表驱动解释）/ `vox-light`（图表驱动·清爽浅底）/ `doodle-note`（手绘读书笔记），Step2 按**决策树**锁定，详见 visual-system.md
+- **镜头语言**：单镜画面语法（KG-y1/T0/W1/I1/K1/H1/E1/C1/V1/Z1 十种），逐镜标注 `shotLang`，须落在所选 styleMode **兼容矩阵**内（主力 1 个 + 辅助 2~3 个），运镜参数与节奏密度详见 `references/镜头语言.md`
 - TTS 引擎：ChatTTS（默认）或 Edge-TTS（通过 `TTS_ENGINE` 环境变量切换）
 - 默认配音：**强制 `gentle_female`（温和女声），不再判断/询问其它音色** / Edge-TTS `zh-CN-YunxiNeural`（云希，男声）
 
@@ -96,6 +97,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 - [ ] **按 visual-system.md「风格选择决策树」四问判定 `styleMode`**，把逐问结论写进样式确认表（操作者已给参考片则风格由参考片决定，只判定可行性）
 - [ ] 写全片逐句旁白，切 N 个 scene，每 scene 标注 Effect/配图/纯文字
+- [ ] **分镜表每镜标注镜头语言代号**（KG-y1/T0/W1/I1/K1/H1/E1/C1/V1/Z1，见 `references/镜头语言.md`）：主力语法与 styleMode 对齐，辅助语法查兼容矩阵；信息族（C1/I1/W1/K1）不连排三镜
 - [ ] **旁白与字幕一律纯中文**，不产出中英对照（除操作者明确要求双语）
 - [ ] **草稿须覆盖 HKRR 四要素**（见下表），缺项须在草稿中注明补充方案
 - [ ] **以 markdown 呈现草稿**
@@ -418,6 +420,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 | `doodle` | 概念隐喻手绘线稿，一镜一隐喻 | **代码手绘 SVG**（本 skill 手绘库，非生图；逐笔绘制动效） | tsx 组件 | doodle-note |
 
 > **路由原则**：**有字有数走 `infographic`/`chart`（信息图/精绘图表，数字精确）；没字看气氛走 `flat`/`atmosphere`（生图）。** 混用会翻车：用生图画数据→数字乱码；用信息图画氛围→像 PPT 模板。
+> **shot_type × 镜头语言对应**：`effect`→K1 为主；`infographic`/`chart`→C1；`process`→I1/W1；`flat`→KG-y1/T0/E1；`atmosphere`→Z1/T0/V1/E1；`doodle`→T0/W1。逐镜 `shotLang` 须查 `references/镜头语言.md` 兼容矩阵，与 styleMode 冲突的禁用。
 > **静帧即首帧**：所有 PNG 产物都可作为后续图生视频（万象/即梦）的首帧输入，链路互通。
 > **提示词规范**：`flat`/`atmosphere` 生图前先用 prompt-generator 生成规范提示词，必须带 AI slop 负向约束。
 
@@ -429,7 +432,8 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
   - 已有项目不主动修改；本规则只作用于本 Skill 后续创建的新 Remotion 项目
   - Remotion 升级后若提示浏览器版本不兼容，才更新全局文件；不要删除项目 `node_modules` 后重新下载一份
 - [ ] 复制 code-templates.md 的模板：remotion.config.ts、StarfieldDrift、Scene.tsx、index.tsx、effects 骨架
-- [ ] 生成 scenes.json（含顶层 `styleMode`、每镜 `shot_type`、narration、subtitleSegments）
+- [ ] 生成 scenes.json（含顶层 `styleMode`、每镜 `shot_type`、`shotLang`（镜头语言代号）、narration、subtitleSegments）
+- [ ] **Effect 运镜按该镜镜头语言的运镜倾向实现**（`references/镜头语言.md` 第四节参数表：缓推 15–38帧 sineInOut、快推 6–9帧、砸入 4帧 scale 1.55→0.94→1.0 一镜一次；快推+砸入+甩镜占镜头数 1/3 以下，不连三镜往里推）
 - [ ] **底色按 styleMode**：`tech-mint` → Effect 用所选背景色方案渐变（不用实色/transparent 走星空）；`kurzgesagt` → 单一深色块纯底、无渐变无星空；`vox` → 近黑纯底、图表铺满；`vox-light` → 所选浅底方案纯色实底（默认 `#F4F8F7`），色板集中到 `src/effects/palette.ts`，字幕转深色、渐隐遮罩同底色、禁用发光
 - [ ] **画面兑现检查（强制卡点·纯代码审查）**：逐 scene 对照 subtitle，把其中的**可视化素材**落到 Effect 画面上，不得只显示标题。**通过阅读 Effect 代码核对，不通过渲染关键帧验证**
   - 检查方法：把 subtitle 拆成「关键名词 / 数据 / 对比 / 流程 / 枚举」5类元素，逐个确认在 Effect 里有对应视觉呈现
@@ -622,6 +626,10 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - ❌ `kurzgesagt` 一镜堆多概念（每镜只讲一件事、只放一个核心图形）
 - ❌ `vox` 无论证结构（须「抛问题→给背景→层层推进→落判断」，标注跟随口播逐帧点亮）
 - ❌ scenes.json 缺 `styleMode`（顶层）或 `shot_type`（每镜）字段——Step3 无法路由
+- ❌ 逐镜选镜头语言不查兼容矩阵（`shotLang` 与 styleMode 冲突 = 逐镜混搭画风；禁区的语言选了等于全片统一作废）
+- ❌ 镜头语言自带配色/字号（颜色一律 palette 六键、字号一律 Step C 梯度；H1 须去玻璃化，禁 blur 玻璃与霓虹发光）
+- ❌ 信息族镜头语言（C1/I1/W1/K1）连排三镜以上无喘气；K1 连用超过两镜（镜头语言是重音不是叙述）
+- ❌ 运镜无节奏：快推+砸入+甩镜占镜头数超 1/3、连三镜往里推、解说镜每镜慢推（= PPT）——见 references/镜头语言.md 第四节密度原则
 - ❌ 生图（`flat`/`atmosphere`）提示词不带 AI slop 负向串（定义见 visual-system.md）
 - ❌ 用生图模型画数据图表/信息图（数字必糊）——有字有数走 designai-infographic-image 或 Remotion 精绘
 - ❌ Effect 内时间用百分比（用绝对帧数）
