@@ -328,14 +328,9 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 ```
 ## 样式确认
 
-### 视觉风格模式（styleMode，全片统一，先选这个）
-- [ ] `tech-mint`·深空薄荷（默认，星空+薄荷绿，适合 AI/技术/工程题材）
-- [ ] `kurzgesagt`·扁平矢量科普（纯色块+高饱和撞色+一镜一概念，适合科普/原理/抽象概念）
-- [ ] `vox`·图表驱动解释（口播驱动+图表即主体+标注线圈红，适合分析/观点/数据/复盘）
-- [ ] `vox-light`·图表驱动解释·浅底变体（同 `vox` 叙事，换清爽浅底色板，适合微信视频号白色信息流）
-- [ ] `doodle-note`·手绘读书笔记（浅纸底+纯黑单线+逐笔绘制+常驻栏目标题，适合读书解说/成长/价值观）
+### 风格与色板（决策树一步锁定，全片统一）
 
-**决策树判定留痕（必填，四问逐条给结论）**
+**决策树判定留痕（必填，逐问给结论）**
 
 | # | 问题 | 本片结论 | 排除了谁 |
 |---|---|---|---|
@@ -344,22 +339,15 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 | ③ | 技术感还是人味 | | |
 | ④ | 素材形态 / 一致性风险 | | |
 
-> 详见 visual-system.md「风格选择决策树」。不回复默认 tech-mint。
-> 操作者已给参考片 → 风格由参考片决定，跳过①~③，只填④可行性判定。
-> 选 kurzgesagt/vox/doodle-note 时，全片禁用 StarfieldDrift/渐变/粒子，避免 AI slop。
+**选定结果**
 
-### 背景色方案（Effect 底色，仅 tech-mint 模式生效）
-- [ ] 方案一·深海蓝黑 `#0d0d1a → #1a1a3a`（默认，稳重科技感）
-- [ ] 方案二·深紫星云 `#0e0618 → #1d0a35`（神秘感强）
-- [ ] 方案三·墨绿深夜 `#050f0a → #0a1f14`（自然质感）
-- [ ] 方案四·暖棕烛光 `#120a04 → #1f1008`（温暖故事感）
-> 不回复默认方案一
+| styleMode | 色板 | 内容信号 |
+|---|---|---|
+| （填入） | （填入） | （填入简要理由） |
 
-### 浅底背景色方案（选 `vox-light` / 浅底模式时改用此组，纯色实底无渐变）
-- [ ] 浅一·清爽薄荷 底 `#F4F8F7` + 白卡 `#FFFFFF` + 描边 `#C9D8D3` + 翠绿 `#0F9D78` + 深墨绿字 `#17312B`（默认，技术科普/AI，微信视频号最清爽）
-- [ ] 浅二·暖米纸 底 `#F7F4EE` + 赭黄 `#C8872B` + 深褐字 `#2C2418`（人文/阅读/成长）
-- [ ] 浅三·冷调石灰 底 `#F2F4F7` + 蓝 `#2F6FE0` + 深灰字 `#1B2430`（商业/数据/分析）
-> 浅底模式下三件事必须同步改：① 字幕改深色 + 浅色 textShadow；② 整片渐隐遮罩与底色同色（**不得用黑色**，否则片尾压黑）；③ 禁用一切发光滤镜，层级靠描边 + 白卡 + 字重。详见 visual-system.md「`vox-light`」。
+> 不回复默认 `tech-mint + navy`。色板六键色值见 visual-system.md Step B。
+> 操作者给参考片 → 风格由参考片决定，跳过①~③，只填④可行性。
+> 详见 visual-system.md Step A「决策树」及「组合总表」。
 
 ### 语音风格（已锁定，不询问、不判断）
 | 项目 | 取值 | 说明 |
@@ -373,15 +361,42 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 | 项目 | 当前默认 | 是否修改 |
 |------|---------|---------|
 | 语言 | **纯中文单语**（不做中英对照） | |
-| 字号 | 70px（`doodle-note` 浅底模式用 64px 深色字） | |
-| 颜色 | #e8fff3（浅薄荷白）；`doodle-note` 用 #1a1a1a | |
+| 字号 | 70px（固定，全模式统一） | |
+| 颜色 | 暗底用 palette.ink（浅色）；亮底用 palette.ink（深色）+ 浅色 textShadow | |
 | 动效 | 逐行串行淡入淡出 | |
-> 不回复保持默认。**双语字幕不是默认能力**，需要操作者明确提出才做（双行行组会顶掉"任何时刻只有一行"的门禁，须同步放宽）。
+> 不回复保持默认。**双语字幕不是默认能力**，需要操作者明确提出才做。
 ```
 
-### Step 3 · 视觉素材
+### Step 2.5 · 样式预览（强制卡点，Step 3 开工前必须通过）
 
-- [ ] **开工前先跑 `node scripts/check-draft-sync.mjs`**：确认 scenes.json 与最新 `draft-review.md` 一致，不一致先同步（机械门禁，防止草稿已被用户修改而沿用旧版）
+草稿与样式确认通过后，在进入 Step 3 写任何业务 Effect 前，先渲染一帧「样式探针帧」供操作者人眼核验色板 + 字号效果。
+
+- [ ] **新建探针 Effect**（`S00-StyleProbe.tsx`），展示该片将出现的主要文字层级：
+
+  | 区域 | 内容 | 字号 |
+  |---|---|---|
+  | 顶部眉题 | 「栏目标题示例」+ palette.accent 横线 | 34px |
+  | 中部大标题 | 「这里是镜内大标题钩子句」 | 48px |
+  | 中部正文 | 「这里是正文叙述句，展示主力字号效果」 | 40px |
+  | 中部小注 | 「辅助小注 / 条件说明示例」 | 36px |
+  | badge 示例 | 「原因一」胶囊 | 24px |
+  | 底部字幕带 | 「字幕示例不超过十三字」 | 70px |
+
+  - 全屏底色用 `palette.bg`；所有颜色引用 `palette.ts` 常量，不硬编码
+  - styleMode = `tech-mint` 时叠加 StarfieldDrift 透明层
+
+- [ ] **渲染探针帧**（**此处是唯一允许主动运行 `remotion still` 的场景**）：
+  ```bash
+  npx remotion still src/index.tsx StyleProbe --frame=0 --output=style-probe.png
+  ```
+  输出到项目根目录 `style-probe.png`，方便直接查看。review 通过后删除此文件。
+
+- [ ] **呈现给操作者，停下来等 review**：
+  - ✅ 通过 → 删除 `S00-StyleProbe.tsx`，进入 Step 3
+  - ❌ 调色/调字号 → 修改 `palette.ts` 或字号常量，重新渲染，再次 review
+  - ❌ 换风格/色板 → 回到 Step A 重新决策，重新生成样式确认表，再跑本步骤
+
+### Step 3 · 视觉素材
 - [ ] **每个 scene 在 scenes.json 标注 `shot_type`，Step3 按标签路由素材来源**（见下表），标签在 Step2 编剧时确定
 - [ ] 按 scene 类型决定素材来源（algorithmic-art / frontend-design / canvas-design / 手写SVG）
 - [ ] **H 要素场景**：优先用动态 Effect（爆炸、慢镜、粒子）制造视觉爽感；猎奇内容配高饱和撞色
@@ -590,12 +605,12 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - ❌ Step3/5 开工前未跑 `node scripts/check-draft-sync.mjs`（草稿-scenes.json 一致性机械门禁，不一致不得继续）
 - ❌ 复制其他项目的 `node_modules`（native binding 按机器架构解析，跨项目复制必缺平台二进制；一律 `npm install`，装完用 `npx tsc --noEmit` 做编译烟雾测试）
 - ❌ 新项目让 Remotion 自动下载项目级 Chrome Headless Shell 到 `node_modules/.remotion`——必须通过 `Config.setBrowserExecutable()` 复用 `~/.remotion/chrome-headless-shell/` 中的全局浏览器；全局文件缺失时先提示安装，不得静默重复下载
-- ❌ 未经用户确认 styleMode 直接按默认 tech-mint 写代码（样式确认表必须含 styleMode 选择项）
-- ❌ 凭美学/直觉选 styleMode——必须走 visual-system.md「风格选择决策树」，并在样式确认表填四问判定留痕
+- ❌ 未经用户确认 styleMode + 色板直接写代码（样式确认表必须含决策树判定留痕和选定结果）
+- ❌ 凭美学/直觉选 styleMode——必须走 visual-system.md Step A「决策树」，并在样式确认表填四问判定留痕
 - ❌ 草稿里产出中英对照字幕（默认纯中文；操作者明确要求双语才做）
 - ❌ 未经操作者授意自动渲染 mp4
-- ❌ 以「验证编译」为由运行 `remotion still`——编译验证只用 `npx tsc --noEmit`；`remotion still` 会在 `out/` 目录堆积无用 PNG，且属于被禁止的视觉自检行为
-- ❌ 代码生成后主动渲染关键帧（`remotion still`）做视觉自检——画面兑现只在代码层面审查，视觉核对由操作者主动发起
+- ❌ 以「验证编译」为由运行 `remotion still`——编译验证只用 `npx tsc --noEmit`；`remotion still` 会在 `out/` 目录堆积无用 PNG，且属于被禁止的视觉自检行为（⚠️ 唯一例外：Step 2.5 样式预览，明确授权运行一次，输出到项目根目录 `style-probe.png`，review 后删除）
+- ❌ 代码生成后主动渲染关键帧（`remotion still`）做视觉自检——画面兑现只在代码层面审查，视觉核对由操作者主动发起（Step 2.5 样式预览除外）
 - ❌ 完成 Step6 后不收尾、继续渲染成片或反复自检（默认交付 = 代码+配音+封面，见「交付边界」）
 - ❌ 修改后默认渲染验证（仅按需验证）
 
@@ -611,7 +626,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - ❌ 用生图模型画数据图表/信息图（数字必糊）——有字有数走 designai-infographic-image 或 Remotion 精绘
 - ❌ Effect 内时间用百分比（用绝对帧数）
 - ❌ Effect 内 3D rotateY 翻页（竖屏变形）
-- ❌ Effect 字号过小（说明≥40px，标题≥80px，Badge≥28px）
+- ❌ Effect 字号不按 visual-system.md Step C 梯度——直接使用 ep5-v2 实测梯度，不重新推算（大标题 48–52px，正文 40–42px，小注 34–38px，badge 22–28px，字幕固定 70px）
 - ❌ Effect 内容元素 `top` 值小于 150px——顶部 0–150px 为平台留白区，内容从 `top: 150` 起；背景装饰层（全幅散点/粒子/纹理，无文字无图形）不受此限制
 - ❌ Effect 内短标签/短词（版本号、语言名、卡片标题、Badge）未加 `whiteSpace: "nowrap"` 导致换行
 - ❌ 配图 objectFit: cover（用 contain）
