@@ -1,0 +1,5 @@
+{
+  "requiredFamilies": ["PingFang SC", "LXGW WenKai"],
+  "availability": "Both font families must already be installed and available to Chromium and resvg before visual acceptance. Fallback fonts do not satisfy acceptance.",
+  "autoDownload": false
+}

@@ -10,7 +10,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const arg = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
 const allowMissing = args.includes("--allow-missing");
-const DRAFT = arg("--draft") ?? resolve(__dirname, "../draft-review.md");
+const explicitDraft = arg("--draft");
+const draftCandidates = [
+  resolve(__dirname, "../../制作过程/视频方案审阅稿.md"),
+  resolve(__dirname, "../../draft-review.md"),
+  resolve(__dirname, "../draft-review.md"),
+];
+const existingDrafts = draftCandidates.filter(p => existsSync(p));
+const DRAFT = explicitDraft ?? existingDrafts[0] ?? draftCandidates[0];
 const SCENES = arg("--scenes") ?? resolve(__dirname, "../public/scenes");
 
 function fail(message) {
@@ -25,6 +32,7 @@ function missing(message) {
   fail(`${message}。正式制作默认不允许跳过；若仅探索性工作请显式传入 --allow-missing`);
 }
 
+if (!explicitDraft && existingDrafts.length > 1) fail(`找到多个审阅稿文件，请通过 --draft 指定唯一文件：${existingDrafts.join(", ")}`);
 if (!existsSync(DRAFT)) missing(`未找到草稿文件 ${DRAFT}`);
 if (!existsSync(SCENES)) missing(`未找到 scenes 路径 ${SCENES}`);
 
@@ -78,9 +86,9 @@ for (const scene of data.scenes) {
 }
 if (missingScenes.length) fail(`以下场景未能在草稿中一一匹配：${missingScenes.join(", ")}。请补齐草稿或修正 scenes.json，不能静默跳过。`);
 if (diffs.length) {
-  console.error(`[check-draft-sync] ❌ ${diffs.length} 个场景与 draft-review.md 不一致：${diffs.map(d => d.id).join(", ")}`);
+  console.error(`[check-draft-sync] ❌ ${diffs.length} 个场景与 ${DRAFT} 不一致：${diffs.map(d => d.id).join(", ")}`);
   console.error(`[check-draft-sync] 请重新读取最新草稿并同步 scenes.json 后再继续。`);
   for (const d of diffs) console.error(`  ${d.id}\n    draft : ${d.draft}\n    当前  : ${d.current}`);
   process.exit(1);
 }
-console.log(`[check-draft-sync] ✅ ${data.scenes.length} 镜全部与 draft-review.md 一致（${scenesFile}）`);
+console.log(`[check-draft-sync] ✅ ${data.scenes.length} 镜全部与 ${DRAFT} 一致（${scenesFile}）`);

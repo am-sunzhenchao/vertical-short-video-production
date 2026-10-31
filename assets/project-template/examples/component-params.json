@@ -1,0 +1,37 @@
+{
+  "LeftRightCompare": {
+    "params": { "headingId": "heading", "sideIds": ["left", "right"], "detailIds": ["left-detail", "right-detail"], "conclusionId": "conclusion" },
+    "visualElements": [
+      { "id": "heading", "content": "比较关键差异", "textRole": "title", "position": { "x": 40, "y": 0, "width": 920, "height": 90 } },
+      { "id": "left", "content": "条件一", "textRole": "nodeLabel", "colorRole": "accent", "position": { "x": 40, "y": 180, "width": 440, "height": 90 } },
+      { "id": "right", "content": "条件二", "textRole": "nodeLabel", "colorRole": "accent2", "position": { "x": 540, "y": 180, "width": 420, "height": 90 } },
+      { "id": "left-detail", "content": "条件一的具体依据", "textRole": "body", "position": { "x": 40, "y": 310, "width": 440, "height": 320 } },
+      { "id": "right-detail", "content": "条件二的具体依据", "textRole": "body", "position": { "x": 540, "y": 310, "width": 420, "height": 320 } },
+      { "id": "conclusion", "content": "依据差异得出结论", "textRole": "conclusion", "position": { "x": 40, "y": 760, "width": 920, "height": 180 } }
+    ]
+  },
+  "SequentialReveal": {
+    "params": { "headingId": "heading", "stepIds": ["step-one", "step-two", "step-three"], "conclusionId": "conclusion" },
+    "visualElements": [
+      { "id": "heading", "content": "逐步展开", "textRole": "title", "position": { "x": 40, "y": 0, "width": 920, "height": 90 } },
+      { "id": "step-one", "content": "一 · 确认输入", "textRole": "knowledgeChip", "position": { "x": 40, "y": 180, "width": 920, "height": 100 } },
+      { "id": "step-two", "content": "二 · 分析依据", "textRole": "knowledgeChip", "position": { "x": 40, "y": 340, "width": 920, "height": 100 } },
+      { "id": "step-three", "content": "三 · 核对结果", "textRole": "knowledgeChip", "position": { "x": 40, "y": 500, "width": 920, "height": 100 } },
+      { "id": "conclusion", "content": "每一步都有可核对的结果", "textRole": "conclusion", "position": { "x": 40, "y": 760, "width": 920, "height": 180 } }
+    ]
+  },
+  "OutroRecap": {
+    "params": { "heading": "回顾", "steps": ["确认输入", "分析依据", "核对结果"], "quote": "把结论建立在依据之上", "credit": "内容来源与署名" },
+    "visualElements": [
+      { "id": "recap-heading", "content": "回顾", "textRole": "recapHeading", "fontRole": "sans", "colorRole": "ink", "position": { "x": 40, "y": 0, "width": 920, "height": 90 } },
+      { "id": "recap-index-0", "content": "1", "textRole": "index", "fontRole": "sans", "colorRole": "ink", "position": { "x": 64, "y": 150, "width": 60, "height": 60 } },
+      { "id": "recap-step-0", "content": "确认输入", "textRole": "body", "fontRole": "sans", "colorRole": "ink", "position": { "x": 150, "y": 148, "width": 780, "height": 64 } },
+      { "id": "recap-index-1", "content": "2", "textRole": "index", "fontRole": "sans", "colorRole": "ink", "position": { "x": 64, "y": 280, "width": 60, "height": 60 } },
+      { "id": "recap-step-1", "content": "分析依据", "textRole": "body", "fontRole": "sans", "colorRole": "ink", "position": { "x": 150, "y": 278, "width": 780, "height": 64 } },
+      { "id": "recap-index-2", "content": "3", "textRole": "index", "fontRole": "sans", "colorRole": "ink", "position": { "x": 64, "y": 410, "width": 60, "height": 60 } },
+      { "id": "recap-step-2", "content": "核对结果", "textRole": "body", "fontRole": "sans", "colorRole": "ink", "position": { "x": 150, "y": 408, "width": 780, "height": 64 } },
+      { "id": "recap-quote", "content": "把结论建立在依据之上", "textRole": "quote", "fontRole": "sans", "colorRole": "ink", "position": { "x": 40, "y": 530, "width": 920, "height": 180 } },
+      { "id": "recap-credit", "content": "内容来源与署名", "textRole": "note", "fontRole": "sans", "colorRole": "ink", "position": { "x": 40, "y": 740, "width": 920, "height": 90 } }
+    ]
+  }
+}

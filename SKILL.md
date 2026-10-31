@@ -5,725 +5,168 @@ description: Use when producing a Chinese vertical (1080×1920) narrated short v
 
 # 竖版中文短视频制作
 
-> 详细视觉规范见 `references/visual-system.md`，动效模式与镜头语言见 `references/motion-system.md`，科学事实审查见 `references/scientific-review.md`，代码模板见 `references/code-templates.md`
+## 项目规格与入口
 
----
+- 平台：微信视频号 + 抖音；视频 1080×1920、25fps；封面 1080×1440。
+- 栈：Remotion 4.x + ChatTTS / edge-tts + @resvg/resvg-js。
+- 新项目默认 `paper` 暖浅底 + `styleMode: "vox-light"`，不先询问风格；仅操作者明确要求才覆盖。
+- 默认配音锁定 ChatTTS `gentle_female`，不按题材擅自更换、不询问全局音色。Edge-TTS 备用为 `zh-CN-YunxiNeural`。
+- `<skill-root>` 指本次加载的 Skill 实际根目录，不是固定安装路径；ChatTTS 根从 `<skill-root>/chattts/config.json` 的 `chatts_root` 读取。
+- 输入、研究、方案阶段不依赖 ChatTTS 配置。配置引导移至第 8 步前，见 `references/production-workflow.md`。
 
-## 🔧 启动检查（每次激活 skill 时必须先执行）
+## 主流程内路径约定
 
-在做任何事之前，执行以下检查流程：
+所有新项目产物集中在项目根下的约定目录：研究与方案记录放 `制作过程/`，项目级统计输入与统计工具放 `制作过程/临时文件/`，人工 QA 关键帧、短片段与检查记录放 `制作过程/渲染质检/`，封面与发布文案放 `发布素材/`；生产工程保持下方交付树结构。`sourcePath / researchPath / draftPath` 都相对于项目根解析，不相对于方案所在目录。镜头正文直接合并到 `制作过程/视频方案审阅稿.md`，不另建额外草稿视图。系统 `tmpdir()`、进程间任务文件及一次性环境测试等 OS 临时机制保留，它们不属于需保留的制作记录。
 
-### 1. 读取 ChatTTS 配置
+旧项目尊重实际记录路径，不自动搬迁，也不同时维护两套权威文件。操作者明确要求迁移时，须同步方案路径字段、命令和脚本中的引用，再复查路径解析与文件一致性；不能只改文件名或文档示例。
 
-读取 `~/.claude/skills/vertical-short-video-production/chattts/config.json`：
+## 十步制作流程
 
-- **文件存在且 `chatts_root` 有效**（目录存在 + 包含 `ChatTTS/` 子目录）→ 直接进入正式流程
-- **文件不存在或路径无效** → 执行下方「首次配置引导」
+### Step 1 · 接收与保存输入
 
-### 2. 首次配置引导
+读取 `references/research-workflow.md` 第 1 步。完整读取材料，保留原文、链接、来源标识与图片/视频附件路径，保存到 `{项目}/制作过程/原始知识材料.md`。不静默改写源材料，不因音频环境未配置而阻塞输入。
 
-```
-ChatTTS 未配置或路径无效。
+### Step 2 · 研究与知识提取
 
-请提供您本地 ChatTTS 的安装目录（即包含 ChatTTS/ 子目录和 speakers/ 目录的根目录）。
-示例：/Users/yourname/ChatTTS
-```
+按 `references/research-workflow.md` 第 2 步主动核查，保存 `{项目}/制作过程/知识解析与证据.md`：核心问题、知识点 ID、主张 ID、因果/比较/流程关系、来源 ID、证据范围、不确定性与风险。科普、科技、历史、数据内容同时读 `references/scientific-review.md`。科学审查表写入同一 `制作过程/知识解析与证据.md`，第 5 步汇入审阅稿，不另建审查文件。`source_fact` 只是材料所述，不等于已核验事实。研究放行不要求逐镜组件。
 
-用户提供路径后，执行验证：
+### Step 3 · 自动叙事设计
 
-```python
-# 验证条件（三项全过才写入）
-os.path.isdir(f"{path}/ChatTTS")        # ChatTTS 模块存在
-os.path.isdir(f"{path}/speakers")       # speakers 目录存在
-os.path.isfile(f"{path}/speakers/3_gentle_female_v2.txt")  # 基础音色文件存在
-```
+读 `references/narrative-design.md`。按理解顺序组织钩子、背景、机制/证据、边界、收束，不机械照搬原文；补充解释有依据、核心知识不丢、不无谓重复、不为钩子注水。规划知识覆盖、情绪节奏、相邻镜承接与独立 Outro。时长由完整性决定，不设总时长或压缩比上限。
 
-- **验证通过** → 写入 `chattts/config.json`，提示「✅ ChatTTS 配置成功，路径已保存」，继续正式流程
-- **验证失败** → 告知具体缺失项，请用户检查后重新提供路径
+### Step 4 · 逐知识点视觉规划
 
-### 3. 验证通过后同步检查
+先只读取 `references/visual-planning-workflow.md`，按下列顺序执行；其余规范按该入口的具体问题查阅，不一次全文加载五份文件。
 
-config.json 写入后，还需确认 Demo 音色 speaker 文件是否已同步：
+#### 4A · 明确知识目标与关系
 
-```bash
-ls {chatts_root}/speakers/04_jsjs_male_seed222.txt 2>/dev/null
-```
+从研究与叙事提取每镜必须看懂的主体、关系、证据边界；此时不选配色或动效。
 
-若不存在，提示：
-```
-⚠️  Demo 音色文件未同步到 ChatTTS/speakers/。
-请运行以下命令一键同步（skill 内已内置所有 speaker 文件，无需额外下载）：
+#### 4B · 选择表达与主动作
 
-python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.py
-```
+按入口映射表选择 visualGrammar、shotLang 与主模式，只查对应模式/语法条目；默认停镜、低强度、无辅助模式，先确保画面表达知识。
 
----
+#### 4C · 绑定组件与全局配置
 
-## 项目规格
+先查真实组件再写参数；全片一次读取色板实际六键和固定字号角色，逐镜继承，不重选颜色/字号。记录 shot_type、visualElements 和组件复用/新建依据，不制作素材或生产代码。
 
-- 平台：微信视频号 + 抖音
-- 视频：1080×1920，25fps；封面：1080×1440
-- 栈：Remotion 4.x + ChatTTS / edge-tts + @resvg/resvg-js
-- **视觉主题**：默认自动采用 `tech-mint` 作为兼容主题；模型先按知识内容选择逐镜 `visualGrammar` 与 `motionMode`。只有操作者明确要求时才手动覆盖 `styleMode`；现有主题名称继续兼容，详见 `references/visual-system.md` 与 `references/research-workflow.md`
-- TTS 引擎：ChatTTS（默认）或 Edge-TTS（通过 `TTS_ENGINE` 环境变量切换）
-- 默认配音：**强制 `gentle_female`（温和女声），不再判断/询问其它音色** / Edge-TTS `zh-CN-YunxiNeural`（云希，男声）
+#### 4D · 小批次兑现与衔接检查
 
-## 交付物清单
+按叙事段落约 3–5 镜一批，逐镜核对主张→画面关系、token 与可执行性，再核对跨批承接。结果写入同一 制作过程/视频方案审阅稿.md 的待整合规划区，Step 5 统一生成正式方案；不得为形式多样强行插氛围镜。
 
-```
+### Step 5 · 结构化方案与评测迭代
+
+读 `references/video-plan.md`、`references/draft-review-workflow.md`。落盘同一 `planVersion` 的 `制作过程/视频制作方案.json` 与 `制作过程/视频方案审阅稿.md`，覆盖完整旁白、字幕、来源/主张映射、逐镜画面、组件参数、动效、时长估计、Outro、色板和字号。
+
+执行 HKRR、7 维度评测、压缩比统计、知识覆盖与相邻镜衔接检查；按结果最多自动优化 3 轮。加权总分 ≥8 且维度 1–5 无单项 ≤5 才可正常呈现审批；3 轮仍未通过，呈现最优版与剩余问题，由操作者决定。
+
+此阶段直接用Skill维护的 `scripts/script-stats.mjs --raw <实际源材料路径> --plan <实际方案路径>`统计预估有声字数/时长，不重新写统计脚本、不提前生成生产scenes.json。用render-review.mjs生成同版完整视图；人改稿后先处理差异，不覆盖用户修改。
+
+### Step 6 · 人工 Review 卡点
+
+呈现研究摘要与来源、完整方案、评测表、优化摘要、待决策项，停止等待操作者明确批准当前版本。批准前不写生产代码、不生成素材、不配音；评分通过不等于人工批准。
+
+重新读取文件，不依赖会话记忆。人工改草稿须回写计划、递增版本、重新评测；任何计划变更立即令批准失效，设 `review.status: "pending"`、`review.reviewedVersion: null` 并清空 approvedBy、approvedAt、approvalEvidence。批准时设 `review.status: "approved"`，记录操作者、时间、明确批准依据与相同 reviewedVersion；不把旧版本的“OK/开始”套到新版本。
+
+### Step 7 · Remotion 实现与素材制作
+
+读 `references/production-workflow.md` 第7步并核对有效批准计划。执行Skill `scripts/init-project.mjs --project-root <实际项目根>`复制可运行模板，不重写字幕、入口、公共UI、基础脚本。`export-plan.mjs`生成完整scenes/全局样式/注册，保持有效实测时序；模型只生成每镜独立包装和题材相关几何。
+
+使用 `validate-project.mjs`核对全字段、字体角色、版本、路径和组件；旧check-draft-sync仅旁白兼容，不能代替上述检查。运行生成工程typecheck/lint，画面知识兑现与相邻镜关系仍需审查。
+
+检查画面兑现、相邻镜连续性、字幕安全区、帧驱动确定性与 Outro，执行 `npx tsc --noEmit` 等非渲染检查。不自动运行关键帧、短片段或最终 MP4；不能声称视觉通过。
+
+### Step 8 · 配音与真实时长字幕同步
+
+读 `references/production-workflow.md` 第 8 步。先重新读取计划与草稿对全字段，再检查已生成项目脚本；完成 ChatTTS 配置与可用性确认后生成音频。
+
+按批准alignmentMode执行 `audio-pipeline.mjs --project-root <实际项目根> --generate --tts-batch chattts`；批处理全数成功后才归一化、一次性开场降速及原子回写measured数据。raw音频/处理指纹防重复降速，缺音频或部分失败阻塞；不手工拼接长shell命令。保留-16.60LUFS、openingTempo0.9、PAD0、tailSec及真实startSec，路线或额外tempo意图变更重新批准。
+
+### Step 9 · 封面、发布文案与自动交付停止
+
+读 `references/production-workflow.md` 第 9 步。先读计划与草稿对全字段，再运行实际存在的项目检查脚本。先只输出两版封面 SVG、标题与描述，不生成 PNG；V2 背景与视频首帧设计一致，封面使用同一批准色板。交付 SVG 后停止等待封面 Review，操作者明确确认当前文件后才将获批版本转换为 PNG；第 6 步方案批准不替代封面确认，SVG 修改后须重新确认。
+
+交付项目代码、素材、配音、方案与封面文案后结束。明确列出非渲染检查结果，以及“尚未人工渲染/视觉验收”的状态，不继续自动渲染或反复自检。
+
+### Step 10 · 人工启动 Remotion 与渲染质量检查
+
+仅操作者主动启动本步，读 `references/render-quality-check.md`。先读取目标项目 `package.json` 再给实际 npm 命令；agent 不自动运行关键帧、短片段、最终 MP4。检查人工提供的关键帧、正常速度片段和成片；未渲染只能报告未验证。
+
+问题按研究/叙事/规划/实现/同步/封面路由返回相应步骤。修改计划须重新走第 5–6 步并重置批准；修复后等待人工重新渲染。
+
+## 交付树
+
+```text
 项目根/
+├── 制作过程/
+│   ├── 原始知识材料.md
+│   ├── 知识解析与证据.md
+│   ├── 视频制作方案.json
+│   ├── 视频方案审阅稿.md
+│   ├── 临时文件/
+│   └── 渲染质检/
 ├── <project>-video/
 │   ├── public/scenes/<slug>/scenes.json
 │   ├── public/scenes/<slug>/audio/*.mp3
-│   ├── src/<Composition>/Scene.tsx
-│   ├── src/effects/*.tsx          ← Effect 命名：{sceneId}-{EffectName}.tsx，例：S04-Sandwich.tsx
-│   │                                 **每个 scene 对应一个独立 tsx，禁止多 scene 共用同一 Effect 组件**
-│   └── scripts/tts.mjs, sync-durations.mjs, render-cover.mjs
-└── cover/标题.txt, 描述.txt, 封面v1.svg/png, 封面v2.svg/png
+│   ├── public/scenes/<slug>/shots/*
+│   ├── src/Scene.tsx、Video.tsx、subtitles.ts、types.ts
+│   ├── src/ui/index.tsx
+│   ├── src/effects/palette.ts、typography.ts、registry.ts
+│   ├── src/effects/{sceneId}-{EffectName}.tsx
+│   ├── project.config.json
+│   └── scripts/run.mjs、render.mjs（调用Skill维护工具，不重写基础脚本）
+└── 发布素材/
+    ├── 标题.txt, 描述.txt
+    ├── 封面v1.svg, 封面v2.svg
+    └── 封面v1.png, 封面v2.png（仅对应 SVG 经封面 Review 确认后生成）
 ```
 
----
-
-## 制作流程（强约束：Step1/2 未通过不得进入 Step3）
-
-### Step 1 · 素材盘点与研究（只读输入，主动核查）
-
-- [ ] 盘点并逐一阅读输入的文章、资料摘要、笔记、图片、视频和引用链接；用户粘贴的文字也必须落盘为 `source.md`
-- [ ] 将输入视为研究起点，而非默认正确的最终脚本；区分原文明确陈述、可由来源支持的事实、模型推断、比喻和未知项
-- [ ] 按 `references/research-workflow.md` 执行研究：提取核心问题与可核验主张，核查关键事实、数字、因果和比较，补充必要背景；优先一手来源、官方/学术来源与高质量综述
-- [ ] 建立来源记录与主张核验表；不得编造来源。高风险主张证据不足时，标记待核验并阻止其作为确定事实进入旁白
-- [ ] 输出《素材与研究盘点》：输入摘要、核心问题、主要结论、证据缺口、可补充解释、来源清单
-
-### Step 2 · 叙事设计、视觉规划、评测优化与 Review（强制卡点）
-
-- [ ] 基于研究结果组织完整视频叙事，不机械照搬原文顺序；补充内容必须服务核心问题并有依据，避免无限扩写
-- [ ] **不要求操作者先选视觉风格**：按每个知识点自动选择 `visualGrammar`（如科学示意图、图表、时间线、对照、结构拆解、动态文字），再匹配 `motionMode` 与现有组件；整片使用统一视觉主题。只有操作者明确要求或给出参考片时才覆盖主题，规则见 `references/visual-system.md`
-- [ ] 按 `references/research-workflow.md` 输出研究摘要、叙事大纲、逐镜规划与结构化 `motionPlan`，确保每镜的知识目标、画面表达、动效和旁白一致
-- [ ] 写全片逐句旁白，切 N 个 scene，每 scene 标注 Effect/配图/纯文字
-- [ ] **旁白与字幕一律纯中文**，不产出中英对照（除操作者明确要求双语）
-- [ ] **草稿须覆盖 HKRR 四要素**（见下表），缺项须在草稿中注明补充方案
-- [ ] **以 markdown 呈现草稿**
-- [ ] **草稿内容要尽量完整，保证内容正确、内容连贯、逻辑清晰**
-- [ ] **过「三条改编硬规则」**（见下方）：扩写上限 / 禁概览+细讲 / 钩子数量自检。任一不过，先改到过，再评测
-- [ ] 草稿写完后立即执行「7维度量化评测」（见下方），按评测结果自动优化迭代
-- [ ] **执行「文稿压缩比统计」**（见下方），产出压缩比读数 + 精简内容归纳 + 核心论点保留清单 + 语速核对（压缩比只报数、不设阈值）
-- [ ] **执行「衔接连贯性检查」**（见下方），逐相邻镜核对叙事过渡与画面延续，缺过渡处补过渡镜
-- [ ] 评测通过（总分≥8且核心维度1-5无≤5）后，呈现研究摘要与来源、最终草稿、评测表、优化摘要、视觉规划摘要和需要操作者决策的事项，**停下来等 review**
-- [ ] **草稿落盘**：将研究摘要/来源、关键主张核验状态、最终草稿、场景表、视觉规划、评测结果、**文稿压缩比统计**与**衔接连贯性检查表**写入 `draft-review.md`；不再把风格选择表作为必填项
-- [ ] 用户修改完成后，**必须重新 read `draft-review.md` 文件**以获取最新草稿，再进入 Step 3。**禁止依赖会话上下文中的草稿记忆**——用户随时可能直接改文件，上下文里的版本随时过期。进入 Step3/4/5 任何一步前，先跑 `node scripts/check-draft-sync.mjs`（模板见 references/code-templates.md §20），不一致则同步后再继续
-- [ ] 3轮迭代仍未通过时，呈现最优版本 + 剩余问题清单，让用户决定是否继续
-- [ ] 操作者明确说"通过/OK/开始"前，**不写一行代码**
-- [ ] 若操作者明确要求自定义视觉主题，将主题覆盖记录在 `draft-review.md`；默认不单独打断流程询问风格
-
-#### HKRR 草稿检查表
-
-| 要素 | 核心目标 | 草稿中的落点 |
-|---|---|---|
-| **H · Happiness** 快乐 | 趣味解压、猎奇搞笑、视觉爽感 | 有无爆笑反转桥段？有无视觉冲击慢镜/爆炸拆解画面？ |
-| **K · Knowledge** 知识 | 干货、避坑、科普、行业内幕 | 每个 scene 是否有明确知识点？观众学完能直接落地吗？ |
-| **R · Resonance** 共鸣 | 情绪共情、经历共鸣、价值观认同 | 有无普通人代入感？有无"说出了我的心声"的场景？ |
-| **R · Rhythm** 节奏 | 开篇抓眼、无废话、快慢剪辑、情绪卡点 | 前3秒是否直击痛点？每15秒是否有一个小看点？结尾有无情感升华卡点？ |
-
-**HKRR 评分原则**：四要素都强 = 爆款潜力最大（参考何同学《5G 真实速度》、影视飓风《粉丝卫星》）；至少覆盖 2 项才具备传播基础。
-
-#### 7维度量化评测（草稿生成后必须执行）
-
-基于原始素材与草稿逐条对照，按以下7个维度打分（1-10），计算加权总分。
-
-| # | 维度 | 权重 | 评判要点 |
-|---|------|------|---------|
-| 1 | 内容忠实度 | 15% | 草稿是否完整传达素材核心观点与关键信息？有无遗漏、扭曲或过度发挥？ |
-| 2 | 开场钩子 | 20% | 前3-5秒能否瞬间抓住注意力？钩子是否有悬念/冲突/情绪冲击？是否避免平淡叙述式开场？ |
-| 3 | 叙事结构 | 15% | 是否有清晰的"钩子→展开→高潮→收束"节奏？信息密度是否适配短视频消费节奏？转场逻辑是否自然？ |
-| 4 | 视听可执行性 | 15% | 画面描述是否具体到可直接指导拍摄/剪辑？旁白/字幕是否口语化、节奏感强？BGM/音效提示是否合理？ |
-| 5 | 情绪曲线 | 15% | 是否设计了明确的情绪走向？中段是否有情绪转折/喘息点？结尾是否有记忆点或行动引导？ |
-| 6 | 平台适配度 | 10% | 是否适配微信视频号/抖音（竖屏9:16、社交传播）？语速与单镜信息密度是否合理？**不因总时长长而扣分** |
-| 7 | 制作可行性 | 10% | 画面/特效/素材需求在现有条件下是否可实现？是否有过度依赖高成本制作的段落？ |
-
-**评分输出格式**：
-
-```
-| 维度 | 得分(1-10) | 简评 |
-|------|-----------|------|
-| 内容忠实度 | | |
-| 开场钩子 | | |
-| 叙事结构 | | |
-| 视听可执行性 | | |
-| 情绪曲线 | | |
-| 平台适配度 | | |
-| 制作可行性 | | |
-
-**加权总分**：XX/10
-
-**最终判定**：
-- ✅ 可呈现用户 — 总分≥8且维度1-5无单项≤5
-- ⚠️ 需优化后重评 — 总分6-7.9，或维度1-5任一≤5
-- ❌ 需重写 — 总分<6
-
-**修改建议**（如适用）：
-按优先级P0-P5列出具体修改点，每条含：问题→建议改法→预期效果
-```
-
-#### 衔接连贯性检查（草稿落盘前必须执行 · 强制卡点）
-
-跳变是长知识向片子最常见的硬伤：上一镜还在讲"怎么跑"，下一镜突然开始讲"怎么判分"，观众掉线。**逐相邻镜对（S(n) → S(n+1)）过一遍三问**，把结论写成表格。
-
-**三问**
-
-| # | 检查项 | 判断方法 | 不通过的处理 |
-|---|---|---|---|
-| ① | **叙事是否承接** | 上一镜的落点（结论/动作）能不能直接接住下一镜的开头？两镜是否属同一话题层级？跨章节（原素材换大节）尤其高发 | 补一条**过渡镜**：用「上一镜的结果 + 一个设问」引出下一镜（例：「逐条判完，单个用例的好坏有了。要看这个 skill 到底值不值，还得把结果聚起来看。」） |
-| ② | **画面是否延续** | 下一镜的 Effect 是否复用/演化上一镜的视觉元素（同一图形被放大、缩小、拆开、汇总），还是完全另起一套？ | 让相邻 Effect 共享一个视觉锚点：元素承接（上镜的卡片缩小成下镜的一行）、位置承接（同位置生长）、色彩承接（强调色延续） |
-| ③ | **口播是否有连接词/钩子** | 下一镜首句是否有承接语（「但」「所以」「到这一步」「那么」）或回指上一镜的名词？还是硬起一个新概念？ | 首句加承接语或回指；概念型新话题必须先给一句"为什么现在讲它" |
-
-**过渡镜的三种写法（按跳变类型选）**
-
-| 跳变类型 | 过渡镜写法 | 示例 |
-|---|---|---|
-| 换章节（流程 → 判定 / 判定 → 统计） | **结果 + 设问**：先收上一段的产物，再问"然后呢" | 「第一轮跑完，你手里只有一堆输出。它到底算合格，还是不合格？」 |
-| 换视角（逐条 → 整体 / 整体 → 逐条） | **缩放隐喻**：画面 zoom out / zoom in，旁白点明视角切换 | 「但平均值会掩盖细节，真正有用的信息藏在逐条断言里。」 |
-| 换主体（机器 → 人 / 断言 → 人工） | **边界声明**：说清前一手段的盲区，引出新主体 | 「但断言只能覆盖你预想到的东西，想不到的问题还得靠人看。」 |
-
-**输出格式（写入 draft-review.md）**
-
-```
-## 衔接连贯性检查
-
-| 相邻镜对 | ①叙事承接 | ②画面延续 | ③口播钩子 | 结论 / 处理 |
-|---|---|---|---|---|
-| S01 → S02 | ✅ | ✅ | ✅「所以」 | 通过 |
-| S08 → S09 | ❌ 跨章节 | ⚠️ 元素另起 | ❌ 硬起概念 | 补过渡镜 S08C（结果+设问），并让 S09 复用 S08C 的尺子图形 |
-
-- 相邻镜对总数：N｜通过：N1｜补过渡镜：N2｜调整画面承接：N3
-- 新增过渡镜清单：S08C / S13C / S15 / S17 …
-```
-
-> **放行条件**：所有 ❌ 项都必须有处理结论（补过渡镜 / 改画面承接 / 改首句），不允许留"已知跳变但不处理"。
-> 过渡镜属于**结构必需件**，不受时长与压缩比影响，不得为了缩短片长删掉。
-
-#### 文稿压缩比统计（草稿落盘前必须执行）
-
-把「原始素材」压成「口播讲解稿」，压缩比是**参考性观察指标**，用来看清改编幅度：偏高说明书面语残留多（读起来可能拗口），偏低说明改动大（要重点核对论点有没有丢）。用 `scripts/script-stats.mjs`（见 references/code-templates.md）计算，禁止手工口算字数（易错）。
-
-> **压缩比不设上下限，不作为门禁**。唯一的硬门禁是「核心论点保留清单」——只要论点无丢失，压缩比高低都放行。内容完整性优先于篇幅控制。
-
-**计算口径**（统一用汉字数，标点/空白不计入主指标）
-
-| 指标 | 定义 |
-|---|---|
-| 原始文稿字数 `R` | `source.md` 中的汉字数（正则 `[\u4e00-\u9fff]`），剔除 markdown 标记与引用行 |
-| 讲解文稿字数 `N` | 各 scene `narration` 拼接后的汉字数 |
-| 压缩比 | `N / R` |
-| 精简字数 | `R − N` |
-| 全片语速 | `N / 总时长(秒)` |
-| 每镜语速 | 各 scene `narration汉字数 / durationSec` |
-
-**压缩比读数（只报数，不判定通过与否）**
-
-| 压缩比 | 读数含义 | 建议动作（非门禁） |
-|---|---|---|
-| 偏高（书面语多） | 接近照读原文 | 按下方 6 类扫一遍，把从句/连接词改成口语句式；**不要为了降压缩比删论点** |
-| 居中 | 常规改编 | — |
-| 偏低（改动大） | 大量收敛与合并 | 逐条核对「核心论点保留清单」，确认无遗漏 |
-| >100%（口播扩写） | 讲解稿比原文更长 | 合法情形：逐条展开原文要点、补过渡镜、补理由说明；只需确认没有注水复述 |
-
-**语速参考区间**（对应7维度评测的 P1 信息过载检查；只约束"每秒信息量"，**不约束总时长**）
-
-| 字/秒 | 字/分 | 判定 |
-|---|---|---|
-| < 3.0 | < 180 | ⚠️ 拖沓，考虑拆句或合镜 |
-| 3.0 ~ 4.5 | 180 ~ 270 | ✅ 健康 |
-| 4.5 ~ 5.8 | 270 ~ 350 | ⚠️ 偏快，长镜需拆句 |
-| > 5.8 | > 350 | ❌ 语速门禁，必须放慢（拆句，不是删论点） |
-
-> **总时长不设上限**：镜数与总时长由内容完整性决定。长知识向题材做到 5~10 分钟也合法，不得为了压时长删减论点或砍过渡镜。
-
-> **关键副产物 · 决定字幕对齐方案**：统计每镜语速的极差 `max − min`。
-> - **极差 ≤ 1.0 字/秒**（语速均匀）→ 可用「**单段 TTS + 字幕按字数比例分配时间**」，韵律自然且误差极小
-> - **极差 > 1.0 字/秒**（语速不均）→ 必须走「**多段 TTS + `startSec` 回写**」，否则字幕会漂
-> 这一判定要写进 draft-review.md，Step5 按它选路。
-
-**精简内容归纳（固定 6 类，逐类给例子 + 字数量级）**
-
-| # | 类型 | 典型特征 |
-|---|---|---|
-| 1 | 重复表述 | 原文同一观点换句话说了两遍 |
-| 2 | 书面语连接词 | "在此之上，再去追求第三点" → "第三层" |
-| 3 | 同类枚举收敛 | 5 个并列例子砍到 4 个代表项 |
-| 4 | 解释性从句 | "拥有一份可以支撑家庭日常开销的收入，保证一家老小衣食无忧" → "先守住基本盘" |
-| 5 | 限定/让步语 | "只是这件事可遇而不可求，不能强求一蹴而就" |
-| 6 | 段落复述合并 | 原文结尾复述前文路径，与某一镜重合 → 合并 |
-
-> 归纳的目的是**证明砍掉的是冗余而非信息**。若某类砍掉的字数占比 > 40%，说明改编偏向单一手法，需检查是否误删论点。
-
-**输出格式（写入 draft-review.md）**
-
-```
-## 文稿压缩比统计
-
-| | 汉字数 | 有效字符（含标点） |
-|---|---|---|
-| 原始文稿 | R | — |
-| 讲解文稿 | N | — |
-
-- **压缩比：XX.X%**（仅读数，不作门禁；解释一句改编幅度）
-- **精简 XXX 字（XX.X%）**
-
-### 精简掉的是什么
-
-| 类型 | 例子 | 字数量级 |
-|---|---|---|
-| 重复表述 | … | ~XX |
-| …（6 类逐条，无该类则写「无」） | | |
-
-### 核心论点保留清单
-
-| # | 原始论点 | 落在哪一镜 | 状态 |
-|---|---|---|---|
-| 1 | … | S0X | ✅ 保留 / ⚠️ 弱化 / ❌ 丢失 |
-
-> 出现任何 ❌ 丢失 → 回到草稿补镜，不得放行
-
-### 语速核对
-
-| 项目 | 值 | 判定 |
-|---|---|---|
-| 总时长 | XXX.Xs | — |
-| 全片语速 | X.XX 字/秒（XXX 字/分） | ✅ |
-| 每镜语速极差 | X.X 字/秒 | ✅ 均匀 → 单段 TTS + 比例分配字幕 |
-```
-
-#### 自动优化迭代规则
-
-
-1. 评测后若判定为⚠️或❌，按修改建议P0→P5优先级自动优化草稿
-2. 优化后重新执行7维度评测
-3. **最多3轮迭代**：
-   - 第1-2轮：自动优化+重评
-   - 第3轮仍未通过：呈现最优版本 + 剩余问题清单，让用户决定是否继续修改或接受当前版本
-4. 优化重点优先级：
-   - **P0**：情绪曲线断裂（中段无R点、连续K轰炸）
-   - **P1**：信息过载（单场景塞入过多知识点、语速>350字/分钟）
-   - **P2**：内容遗漏（素材核心论点未覆盖）
-   - **P3**：节奏拖沓（可压缩的冗余段落）
-   - **P4**：视听描述不具体（缺少画面/音效指引）
-   - **P5**：过渡生硬（场景间缺少衔接）
-
-#### 最终呈现格式（呈现给用户时）
-
-```
-## 草稿评测结果（第N轮）
-
-[7维度评分表]
-
-**最终判定**：✅ 可呈现用户 / ⚠️ 部分问题残留
-
-### 优化摘要
-| 轮次 | 优化前总分 | 优化后总分 | 关键改动 |
-|------|-----------|-----------|---------| 
-| 1 | X.X | X.X | ... |
-| 2 | X.X | X.X | ... |
-
-[如有残留问题] **待用户决策项**：...
-```
-
-**视觉主题覆盖（仅在操作者明确要求时出现；默认自动选择，不作为必填确认表）：**
-
-```
-## 视觉主题（可选覆盖）
-
-### styleMode（全片统一；默认自动采用 tech-mint 兼容主题）
-- [ ] `tech-mint`·深空薄荷（默认，星空+薄荷绿，适合 AI/技术/工程题材）
-- [ ] `kurzgesagt`·扁平矢量科普（纯色块+高饱和撞色+一镜一概念，适合科普/原理/抽象概念）
-- [ ] `vox`·图表驱动解释（口播驱动+图表即主体+标注线圈红，适合分析/观点/数据/复盘）
-- [ ] `vox-light`·图表驱动解释·浅底变体（同 `vox` 叙事，换清爽浅底色板，适合微信视频号白色信息流）
-- [ ] `doodle-note`·手绘读书笔记（浅纸底+纯黑单线+逐笔绘制+常驻栏目标题，适合读书解说/成长/价值观）
-
-> 默认不询问，系统按知识表达需要自动规划逐镜 visualGrammar；只有操作者明确要求换主题时才使用以下覆盖项。
-> 操作者提供参考片时，将其作为可选主题参考，并检查素材可行性与视觉一致性。
-> 选 kurzgesagt/vox/doodle-note 时，继续遵守对应背景与装饰限制，避免 AI slop。
-
-### 背景色方案（Effect 底色，仅 tech-mint 模式生效）
-- [ ] 方案一·深海蓝黑 `#0d0d1a → #1a1a3a`（默认，稳重科技感）
-- [ ] 方案二·深紫星云 `#0e0618 → #1d0a35`（神秘感强）
-- [ ] 方案三·墨绿深夜 `#050f0a → #0a1f14`（自然质感）
-- [ ] 方案四·暖棕烛光 `#120a04 → #1f1008`（温暖故事感）
-> 旧项目兼容项。若操作者明确指定 Huashu 色板，则以记录在 `draft-review.md` 与 `scenes.json` 中的实际 HEX 值为准，不叠加/混用旧渐变方案。
-
-### 浅底背景色方案（选 `vox-light` / 浅底模式时改用此组，纯色实底无渐变）
-- [ ] 浅一·清爽薄荷 底 `#F4F8F7` + 白卡 `#FFFFFF` + 描边 `#C9D8D3` + 翠绿 `#0F9D78` + 深墨绿字 `#17312B`（默认，技术科普/AI，微信视频号最清爽）
-- [ ] 浅二·暖米纸 底 `#F7F4EE` + 赭黄 `#C8872B` + 深褐字 `#2C2418`（人文/阅读/成长）
-- [ ] 浅三·冷调石灰 底 `#F2F4F7` + 蓝 `#2F6FE0` + 深灰字 `#1B2430`（商业/数据/分析）
-> 浅底模式下三件事必须同步改：① 字幕改深色 + 浅色 textShadow；② 整片渐隐遮罩与底色同色（**不得用黑色**，否则片尾压黑）；③ 禁用一切发光滤镜，层级靠描边 + 白卡 + 字重。详见 references/visual-system.md「`vox-light`」。
-
-### 语音风格（已锁定，不询问、不判断）
-| 项目 | 取值 | 说明 |
-|------|------|------|
-| 全局音色 | **`gentle_female`（强制默认）** | 所有项目一律用 `gentle_female`，不在样式确认表中作为选项询问，不自行判断切换其它音色 |
-| 是否 per-scene 不同风格 | 否 | 全片统一 `gentle_female` |
-
-> **音色规则（强约束）**：默认且唯一使用 `gentle_female`。即使题材偏科普/技术，也不得自行改用 `06_kepu_male_seed333` 等 Demo 音色——除非操作者在对话中明确指定其它音色。scenes.json 中每个 scene 的 `ttsStyle` 一律填 `gentle_female`（或留空走默认）。Demo 音色库仅作"操作者点名时"的备选清单，不再是自动选型依据。
-
-### 字幕样式
-| 项目 | 当前默认 | 是否修改 |
-|------|---------|---------|
-| 语言 | **纯中文单语**（不做中英对照） | |
-| 字号 | 70px（`doodle-note` 浅底模式用 64px 深色字） | |
-| 颜色 | #e8fff3（浅薄荷白）；`doodle-note` 用 #1a1a1a | |
-| 动效 | 逐行串行淡入淡出 | |
-> 若选择 Huashu 色板，字幕文字色、强调色和背景需按同一套色板重新核对，不能只改 Effect 主色。
-> 不回复保持默认。**双语字幕不是默认能力**，需要操作者明确提出才做（双行行组会顶掉"任何时刻只有一行"的门禁，须同步放宽）。
-```
-
-### Step 3 · 视觉素材
-
-- [ ] 读取 `references/motion-system.md`，按知识关系选择 12 种标准动效模式之一；每镜一个主模式，最多一个辅助模式
-- [ ] 先查组件映射表/Effect 库，再选现有组件；仅当无法清楚表达知识关系时才新增组件
-- [ ] 全片锁定一套视觉主题与一套色板。可沿用现有 `styleMode`，也可采用 Huashu 色板，但必须记录色板名与实际 HEX 值；不得逐镜自由选色或混合多个色板
-- [ ] 镜头动作遵循 `references/motion-system.md`：看得清就停、过渡缓而重音快、推拉有来回，避免连续镜头重复同一运镜
-
-- [ ] **开工前先跑 `node scripts/check-draft-sync.mjs`**：确认 scenes.json 与最新 `draft-review.md` 一致，不一致先同步（机械门禁，防止草稿已被用户修改而沿用旧版）
-- [ ] **每个 scene 在 scenes.json 标注 `shot_type`，Step3 按标签路由素材来源**（见下表），标签在 Step2 编剧时确定
-- [ ] 按 scene 类型决定素材来源（algorithmic-art / frontend-design / canvas-design / 手写SVG）
-- [ ] **H 要素场景**：优先用动态 Effect（爆炸、慢镜、粒子）制造视觉爽感；猎奇内容配高饱和撞色
-- [ ] **K 要素场景**：用数据可视化/对比卡片/步骤拆解 Effect，知识点要有视觉锚点
-- [ ] **R 要素场景**：色调偏暖（金色/琥珀），人物/手写/温柔光晕元素，避免冷色硬朗风格
-- [ ] SVG 内 emoji 全替换成 Unicode 符号
-- [ ] 走 render-cover.mjs 输出 PNG，目检无豆腐方块；单张/任意 SVG 用 `node <skill>/scripts/svg2png.mjs <file.svg> [宽度]`（输出同名 .png，默认宽1080，可任意目录执行）
-
-#### shot_type 分镜路由表（每镜打标签，决定素材来源）
-
-| shot_type | 语义 | 素材来源（推荐 skill） | 产物 | 对应范式 |
-|---|---|---|---|---|
-| `effect` | 抽象概念/对比/枚举，用 Remotion 组件表达（默认） | 本 skill Effect 库 + code-templates | tsx 组件 | tech-mint |
-| `infographic` | 讲清一组数据/结构/多项对比 | **designai-infographic-image**（9:16，理解结构，数字不糊） | PNG（首帧） | vox |
-| `chart` | 单一图表铺满屏、旁白带读 | Remotion 精绘 或 designai-infographic-image | tsx / PNG | vox |
-| `process` | 流程/步骤/关系/状态机 | **designai-process-map**（mermaid flowchart/mindmap） | PNG | kurzgesagt/vox |
-| `flat` | 扁平矢量图标/拟物化概念，一镜一概念 | **designai-generate-image** + **prompt-generator**（负向：no gradient/glow/particles） | PNG | kurzgesagt |
-| `atmosphere` | 氛围镜、隐喻镜、封面、转场 | **designai-generate-image**（图生图/风格参考） | PNG | 通用 |
-| `doodle` | 概念隐喻手绘线稿，一镜一隐喻 | **代码手绘 SVG**（本 skill 手绘库，非生图；逐笔绘制动效） | tsx 组件 | doodle-note |
-
-> **路由原则**：**有字有数走 `infographic`/`chart`（信息图/精绘图表，数字精确）；没字看气氛走 `flat`/`atmosphere`（生图）。** 混用会翻车：用生图画数据→数字乱码；用信息图画氛围→像 PPT 模板。
-> **静帧即首帧**：所有 PNG 产物都可作为后续图生视频（万象/即梦）的首帧输入，链路互通。
-> **提示词规范**：`flat`/`atmosphere` 生图前先用 prompt-generator 生成规范提示词，必须带 AI slop 负向约束。
-
-### Step 4 · Remotion 实现
-
-- [ ] **新项目统一复用全局 Chrome Headless Shell（强制）**：浏览器固定存放在 `~/.remotion/chrome-headless-shell/mac-arm64/chrome-headless-shell-mac-arm64/chrome-headless-shell`，新建项目的 `remotion.config.ts` 必须调用 `Config.setBrowserExecutable()` 指向该路径，禁止让每个项目在 `node_modules/.remotion` 重复下载 175MB 浏览器文件
-  - 开工前验证：`test -x "$HOME/.remotion/chrome-headless-shell/mac-arm64/chrome-headless-shell-mac-arm64/chrome-headless-shell"`
-  - 若全局浏览器不存在，先提示操作者安装/复制，不得直接触发项目级下载
-  - 已有项目不主动修改；本规则只作用于本 Skill 后续创建的新 Remotion 项目
-  - Remotion 升级后若提示浏览器版本不兼容，才更新全局文件；不要删除项目 `node_modules` 后重新下载一份
-- [ ] 复制 references/code-templates.md 的模板：remotion.config.ts、StarfieldDrift、Scene.tsx、index.tsx、effects 骨架
-- [ ] 生成 scenes.json（含顶层 `styleMode`、每镜 `shot_type`、narration、subtitleSegments）
-- [ ] **底色按锁定的 visualTheme 与 styleMode**：如果选用 Huashu 色板，先将实际 HEX 值统一写入 `src/effects/palette.ts`，覆盖所有硬编码颜色；否则沿用兼容规则：`tech-mint` → Effect 用所选背景色方案渐变（不用实色/transparent 走星空）；`kurzgesagt` → 单一深色块纯底、无渐变无星空；`vox` → 近黑纯底、图表铺满；`vox-light` → 所选浅底方案纯色实底（默认 `#F4F8F7`），色板集中到 `src/effects/palette.ts`，字幕转深色、渐隐遮罩同底色、禁用发光
-- [ ] **画面兑现检查（强制卡点）**：逐 scene 对照 subtitle 与 motionPlan，把关键名词、数据、对比、流程、枚举和因果关系落到画面；代码审查是第一道检查，但不能替代关键帧/短片段视觉验收
-  - 检查方法：把 subtitle 拆成「关键名词 / 数据 / 对比 / 流程 / 枚举」5类元素，逐个确认在 Effect 里有对应视觉呈现
-  - 例：subtitle 含「单线程 vs 多线程」→ 画面必须有左右对比；含「内存飙升」→ 必须有增长可视化；含「版本混乱」→ 必须有多元素散布；含「①②③④」→ 必须逐项展开
-- [ ] **编译验证用 `npx tsc --noEmit`**（每批 Effect 写完后执行一次）：只做类型检查，不产生任何输出文件，不污染 `out/` 目录
-  - **K 要素场景且 durationSec > 8s**：禁止只用「锚点型 Effect」（WallHeader 等仅标题的组件），必须配「内容型 Effect」（数据可视化/对比卡片/流程拆解）
-- [ ] **画面连贯性检查（强制卡点）**：逐相邻 Effect 对照视觉锚点、构图变化、入场/出场方向、镜头动作与信息层级；连续三镜不得都向内推，重音镜头必须有理由；过渡应承接叙事或空间关系，不得只放一句标题
-- [ ] 字幕：固定70px，每次只显示一行（≤13视觉字符），串行逐行，三级切割（强标点→逗号→机械截断），禁 nowrap
-- [ ] **字幕分片去尾标点**：每个分片展示时，去掉末尾的标点符号（，,。.；;、！!？?：:… 等），只保留正文；标点仅用于切割断句，不参与显示
-- [ ] 标题文字：不超过16个字符，超出部分截断，加 `whiteSpace: "nowrap"`
-- [ ] **节奏（R·Rhythm）强制规则**：
-  - 前3秒 scene：必须用冲突/悬念/反转开头，禁止平铺直叙（❌"今天我们来讲…"）
-  - 每15秒设一个「小看点」：新信息/反转/视觉爆发点，防跳出
-  - 快切 scene（H 类）与慢叙事 scene（K/R 类）保持节奏区分（快镜短、叙事镜长）；**单镜时长与全片总时长均不设上限**，超长镜优先拆镜而非删内容
-  - 结尾倒数2个 scene：节奏放慢 + 情感升华，配合卡点配乐（durationSec ≥ 8s）
-
-### Step 5 · 音频
-
-- [ ] **跑 TTS 前先跑 `node scripts/check-draft-sync.mjs`**：草稿可能已在用户侧二次修改，narration 不一致会导致配音与字幕错位，必须机械校验
-- [ ] **按 Step2「语速极差」判定选路**（见文稿压缩比统计）：
-  - 极差 ≤ 1.0 字/秒 → **单段 TTS**（每 scene 整段一次调用，韵律自然）+ 字幕按汉字数比例分配时间
-  - 极差 > 1.0 字/秒 → **多段 TTS**（按 `subtitleSegments` 逐句生成）+ ffmpeg concat + `startSec` 回写
-- [ ] **运行前先验证 ChatTTS 可用**：`PYTHONPATH=/Users/sunzhenchao/ChatTTS arch -arm64 python3 /Users/sunzhenchao/ChatTTS/chattts_cli.py --text "测试" --output /tmp/t.mp3 --style gentle_female --skip-refine --json-output`，确认输出 JSON 后再批量生成
-- [ ] **ChatTTS 批处理模式**（默认）：`node scripts/tts.mjs`
-  - 内部调用 `chattts_batch.py`，**模型只加载一次**，所有 scene 顺序生成，避免 CLI 模式每次重新加载导致超时
-  - 每个 scene 可在 `scenes.json` 中设置 `ttsStyle` 字段指定独立风格；不设则使用默认风格
-  - 超时上限设为 20 分钟（`1200_000ms`），足够 30+ 个任务完成
-- [ ] **切 Edge-TTS**（备用）：`TTS_ENGINE=edge node scripts/tts.mjs`
-- [ ] **换全局风格**：`CHATTTS_STYLE=calm_male node scripts/tts.mjs`（优先级低于 scene 级别的 ttsStyle）
-- [ ] `node scripts/sync-durations.mjs`（PAD=0，精对齐）
-- [ ] subtitleSegments 多段：批处理生成各 part → ffmpeg concat → 回写真实 startSec
-- [ ] **音量归一化**：所有 MP3 统一归一化到 **-16.60 LUFS**（以首个制作项目的 S09 为基准测量值）
-  ```bash
-  for f in public/scenes/<slug>/audio/S*.mp3; do
-    ffmpeg -y -i "$f" -af "loudnorm=I=-16.60:TP=-3.59:LRA=1.20" -ar 44100 "${f%.mp3}_norm.mp3" && mv "${f%.mp3}_norm.mp3" "$f"
-  done
-  ```
-- [ ] **第一个 scene 音频降速 0.9**（强制）：开场语速过快观众无缓冲直接跳出。全量 TTS 生成并归一化后，对 S01 单独执行降速 + 重新归一化 + sync：
-  ```bash
-  f="public/scenes/<slug>/audio/S01"
-  ffmpeg -y -i "$f.mp3" -af "atempo=0.9,loudnorm=I=-16.60:TP=-3.59:LRA=1.20" -ar 44100 "${f}_norm.mp3" -loglevel error
-  mv "${f}_norm.mp3" "$f.mp3"
-  node scripts/sync-durations.mjs
-  ```
-  > ChatTTS `InferCodeParams` 不支持 `speed` 参数，语速调整只能走 ffmpeg `atempo`（建议 0.85~0.95，超出范围音质明显损失）。
-- [ ] **单场景重新生成**（旁白修改后）：全量重跑浪费时间，用 `scripts/tts-single.mjs` 只重新生成指定 scene（模板见 references/code-templates.md §21）：
-  ```bash
-  node scripts/tts-single.mjs --scene S03   # 生成 + 归一化 + sync-durations 一步完成
-  ```
-  > ⚠️ `chattts_batch.py` 内部执行 `os.chdir(CHATTS_ROOT)`，output 路径**必须是绝对路径**（用 `os.path.abspath()`），否则文件写到 ChatTTS 目录而非项目目录，难以排查。`tts-single.mjs` 模板已内置此处理。
-  ```
-
-#### ChatTTS 可用风格（`/Users/sunzhenchao/ChatTTS/speakers/` 已保存 embedding）
-
-**用法**：在 `scenes.json` 每个 scene 里设 `"ttsStyle": "<key>"`，或 `CHATTTS_STYLE=<key> node scripts/tts.mjs` 全局切换。
-
-##### 通用命名风格（泛用，无固定音色倾向）
-
-| ttsStyle | 说明 | 适用场景 |
-|---|---|---|
-| `calm_male` | 沉稳男声，低温度 | 知识科普、深度解析 |
-| `energetic_male` | 活力男声，高温度 | 开场钩子、热点评论 |
-| `gentle_female` | 温和女声（**全局默认**） | 叙事解读、情感共鸣 |
-| `gentle_male` | 温和男声 | 轻松讲解 |
-| `deep_voice` | 磁性低音 | 严肃话题、结论升华 |
-| `deep_male` | 磁性低音男声 | 行业分析 |
-| `natural_conversational` | 自然对话 | 口播互动 |
-| `jsfx_female` | 技术分享女声，有 refine | 技术/工程/AI 题材 |
-
-##### Demo 音色库（固定音色 + 固定参数，可完全复现）
-
-> ⚠️ 这是**备选清单**，不是默认来源。默认音色锁定 `gentle_female`（见上方"语音风格"强约束），只有操作者明确点名下表某个 `ttsStyle` 时才使用。
-
-> 命名规则：`{风格编号}_{风格}_{性别}_seed{N}`，speaker 文件已同步至 `/Users/sunzhenchao/ChatTTS/speakers/`。  
-> 参考试听：`/Users/sunzhenchao/Desktop/工作文档/self/素材/chattts/audios/{ttsStyle}.mp3`
-
-| ttsStyle | 性别 | 音色特征 | 风格 | speed | refine | 适用场景 |
-|---|---|---|---|---|---|---|
-| `01_dushu_female_seed999` | 女 | 青年女声 | 读书朗读 | 3 | ✗ | 有声书、书评 |
-| `01_dushu_male_seed55` | 男 | 清亮少年感 | 读书朗读 | 3 | ✗ | 有声书、读书笔记 |
-| `02_sanwen_female_seed44` | 女 | 青年厚声 | 散文朗读 | 2 | ✗ | 散文、诗歌、情感 |
-| `02_sanwen_male_seed666` | 男 | 青年成熟厚声 | 散文朗读 | 2 | ✗ | 散文、情感类 |
-| `03_jsfx_female_seed88` | 女 | 青年成熟女声 | 技术分享 | 5 | ✓ oral_4 | 技术口播、知识分享 |
-| `03_jsfx_male_seed99` | 男 | 青年厚声 | 技术分享 | 5 | ✓ oral_4 | 技术口播 |
-| `04_jsjs_female_seed44` | 女 | 青年厚声 | 技术介绍 | 5 | ✗ | 产品/工具介绍 |
-| `04_jsjs_male_seed222` | 男 | 青年成熟厚声 | 技术介绍 | 5 | ✗ | 技术介绍（备选，仅操作者点名时用） |
-| `05_fengjing_female_seed777` | 女 | 青年成熟厚声 | 风景介绍 | 3 | ✗ | 旅游、风景、人文 |
-| `05_fengjing_male_seed888` | 男 | 清亮少年感 | 风景介绍 | 3 | ✗ | 旅游类 |
-| `06_kepu_female_seed555` | 女 | 青年成熟厚声 | 科普讲解 | 6 | ✓ oral_2 | 科普、原理解析 |
-| `06_kepu_male_seed333` | 男 | 青年成熟厚声 | 科普讲解 | 6 | ✓ oral_2 | 科普、深度解读 |
-| `07_gaoxiao_female_seed88` | 女 | 青年成熟女声 | 搞笑吐槽 | 7 | ✓ oral_6 laugh_1 | 搞笑、吐槽、热点评论 |
-| `07_gaoxiao_male_seed77` | 男 | 清亮厚声 | 搞笑吐槽 | 7 | ✓ oral_6 laugh_1 | 搞笑类 |
-| `08_yingshi_female_seed3005` | 女 | 中年厚声 | 影视解说 | 7 | ✓ oral_3 | 影视解说、剧情讲解 |
-| `08_yingshi_male_seed3015` | 男 | 青年成熟厚声 | 影视解说 | 7 | ✓ oral_3 | 影视解说 |
-| `09_qinggan_female_seed3003` | 女 | 中年厚声 | 情感语录 | 2 | ✗ | 情感共鸣、心理、成长 |
-| `09_qinggan_male_seed3001` | 男 | 青年成熟 | 情感语录 | 2 | ✗ | 情感类 |
-| `10_xuanyi_female_seed3016` | 女 | 中年厚声 | 悬疑怪谈 | 3 | ✗ | 悬疑、恐怖、猎奇 |
-| `10_xuanyi_male_seed3008` | 男 | 中年低沉 | 悬疑怪谈 | 3 | ✗ | 悬疑、怪谈 |
-| `11_daihuo_female_seed3011` | 女 | 青年女声 | 带货口播 | 9 | ✓ oral_5 | 带货、促销、快节奏 |
-| `11_daihuo_male_seed3002` | 男 | 青年厚声 | 带货口播 | 9 | ✓ oral_5 | 带货类 |
-| `12_ertong_female_seed3009` | 女 | 中年厚声 | 儿童故事 | 4 | ✓ oral_4 laugh_1 | 儿童故事、亲子 |
-| `12_ertong_male_seed3007` | 男 | 青年厚声 | 儿童故事 | 4 | ✓ oral_4 laugh_1 | 儿童故事 |
-| `13_asmr_female_seed3010` | 女 | 青年成熟女声 | ASMR 助眠 | 1 | ✗ | 助眠、冥想、极慢速 |
-| `13_asmr_male_seed3012` | 男 | 青年成熟厚声 | ASMR 助眠 | 1 | ✗ | 助眠类 |
-
-#### ⚠️ ChatTTS 常见问题
-
-- **CLI 模式超时**（`ETTIMETOUT`）：每次 `execFileSync` 调用 `chattts_cli.py` 都会重新加载模型（~45s），多 scene 必定超时。**必须用批处理模式 `chattts_batch.py`**
-- **PYTHONPATH 未设置**：Node.js 调用 Python 时需设置 `env: { PYTHONPATH: "/Users/sunzhenchao/ChatTTS" }`，否则 `import ChatTTS` 报 ModuleNotFoundError
-- **arch -arm64 前缀**：Mac M2 必须用 `arch -arm64 python3`，否则 PyTorch arm64 模型无法加载
-
-### Step 5.5 · 片尾收束（强制，防「话说完就黑」）
-
-内容讲完直接切黑是最常见的生硬收尾。**每部片必须有一个独立的 Outro scene + 整片渐隐**，三件套缺一不可：
-
-| # | 要件 | 做法 | 参数基准 |
-|---|---|---|---|
-| 1 | **Outro scene** | 全片最后追加一镜（`S{last}-OutroRecap.tsx`），内容为「N 步回顾」或「一句金句 + 出处/署名」。**禁止**把它写成新知识点 | 旁白 20–30 汉字，约 5–6s |
-| 2 | **静场留白（`tailSec`）** | Outro 的 `durationSec = 音频时长 + PAD + tailSec`；静场内画面继续呼吸（极缓 scale/translate），不静止 | `tailSec` = 2.0~2.5s |
-| 3 | **整片渐隐** | Composition 入口叠一层与底色同色的 `AbsoluteFill`，最后 N 帧 opacity 0→1 | `FADE_OUT_FRAMES` = 30~35 |
-
-**Outro 版式模板（三步回顾）**：三条编号胶囊错峰弹入 → 一条横线收口 → 大字金句（带呼吸）→ 底部出处行淡入。最后一条胶囊与金句加 `1 + 0.012 * Math.sin(f * 0.09)` 呼吸，避免静场段完全冻结。
-
-**配套的两处必改（漏掉必翻车）**：
-
-- **`sync-durations.mjs` 必须支持 `tailSec`**，否则每次重跑 TTS 都会把静场留白冲掉：
-  ```js
-  const tail = Number(scene.tailSec ?? 0);
-  scene.durationSec = Number((dur(audio) + PAD + tail).toFixed(2));
-  ```
-- **`Scene.tsx` 字幕只在有声区间内分配**，否则字幕会被摊到静场里、比人声慢 30~40%：
-  ```js
-  const tailFrames = Math.round(Number(scene.tailSec ?? 0) * fps);
-  const subtitleFrames = Math.max(1, durationInFrames - tailFrames);
-  buildLines(scene.subtitle, subtitleFrames);   // ← 用 subtitleFrames，不是 durationInFrames
-  ```
-
-**Outro Effect 的时间轴必须收在音频帧内**：最后一个元素的 `trigger + duration` ≤ `音频秒数 × fps`，静场只留给呼吸和渐隐。写完用「最后触发帧 vs 音频帧数」核对一次。
-
-### Step 6 · 发布物
-
-- [ ] V1+V2 封面：问句 + 格式化核心内容，V2 背景与视频首帧一致
-- [ ] 标题.txt（问句≤16字符）+ 描述.txt（≤1000字符，结尾#标签）
-
----
-
-## 交付边界（默认收尾，不主动越界）
-
-- **默认交付物 = Step4 项目代码 + Step5 TTS 配音 + Step6 封面/文案**。三者产出后即视为完成，向用户交付并结束。
-- **视觉验收采用分级策略**：普通代码改动先做类型检查；每条新视频必须检查开头、最复杂知识镜、关键转折和结尾的关键帧/短片段。试点期或新增组件必须做正常速度短片段验收。临时帧输出到 `/tmp/` 或项目 `qa/`，不得污染 `out/`。
-- **编译验证用 `tsc --noEmit`；视觉验收单独进行**：使用 `npx tsc --noEmit` 做类型检查；如需关键帧，输出到 `/tmp/` 或 `qa/`，绝不写入 `out/`。
-  ```bash
-  npx tsc --noEmit   # ← 编译验证的正确方式，不产生任何输出文件
-  ```
-- **`out/` 目录只用于最终出片**：`out/` 目录仅供 `remotion render`（`npm run render`）输出 mp4 使用，不得写入任何 PNG 或中间文件。若操作者要求渲染关键帧，输出到 `/tmp/` 而非项目 `out/` 目录。
-- **不渲染 mp4**：默认不跑 `remotion render`。用户可自行 `npm run dev` 预览、`npm run render` 出片。
-- 默认不渲染最终 MP4；但关键帧/短片段验收属于必要 QA，可按 `references/motion-system.md` 选择有限镜头验证。完整出片仍需操作者明确授权。
-
----
-
-## 否定项（直接绕开，按类分组）
-
-**流程/门禁**
-- ❌ 跳过 Step1/2 直接写代码
-- ❌ Step1 未把原始素材落盘 `source.md`（后续压缩比统计与忠实度核对无基准）
-- ❌ 未经7维度评测闭环直接呈现草稿（须总分≥8且维度1-5无≤5）
-- ❌ `draft-review.md` 缺「文稿压缩比统计」——压缩比读数 / 精简内容 6 类归纳 / 核心论点保留清单 / 语速核对，**四项缺一不可**
-- ❌ `draft-review.md` 缺「衔接连贯性检查表」（相邻镜逐对核对，缺过渡处必须给处理结论）
-- ❌ 为压时长/降压缩比而删论点、砍过渡镜（内容完整性优先，压缩比与总时长都不是门禁）
-- ❌ 核心论点保留清单出现 ❌ 丢失项仍放行
-- ❌ 手工口算总时长/字数（必须跑 `scripts/script-stats.mjs`，口算必错）
-- ❌ 依赖会话上下文中的草稿内容生成产物，不重新 read `draft-review.md`（用户可能已直接改文件，上下文版本随时过期；记忆≠文件）
-- ❌ Step3/5 开工前未跑 `node scripts/check-draft-sync.mjs`（草稿-scenes.json 一致性机械门禁，不一致不得继续）
-- ❌ 复制其他项目的 `node_modules`（native binding 按机器架构解析，跨项目复制必缺平台二进制；一律 `npm install`，装完用 `npx tsc --noEmit` 做编译烟雾测试）
-- ❌ 新项目让 Remotion 自动下载项目级 Chrome Headless Shell 到 `node_modules/.remotion`——必须通过 `Config.setBrowserExecutable()` 复用 `~/.remotion/chrome-headless-shell/` 中的全局浏览器；全局文件缺失时先提示安装，不得静默重复下载
-- ❌ 把选择 styleMode 设为必经步骤，或因风格确认打断默认流程
-- ❌ 把视觉主题、知识表达方法和动效模式混为一谈；不得仅凭美学偏好决定逐镜画面表达
-- ❌ 草稿里产出中英对照字幕（默认纯中文；操作者明确要求双语才做）
-- ❌ 科普/科技/历史/数据内容没有完成 `references/scientific-review.md` 主张审查就进入视觉制作
-- ❌ 模型不写 `motionPlan` 就直接自由发挥动画代码；每镜没有明确主动效模式或堆叠多个主动作
-- ❌ 未查现有组件映射就新增近似 Effect；没有组件用途、禁用情形与回归样例的新增组件不得进入正式库
-- ❌ 未经操作者授意自动渲染 mp4
-- ❌ 用关键帧渲染代替类型检查；编译检查必须用 `npx tsc --noEmit`
-- ❌ 完全跳过视觉验收，仅凭阅读代码断言动画质量通过；关键帧输出不得写入 `out/`
-- ❌ 完成 Step6 后不收尾、继续渲染成片或反复自检（默认交付 = 代码+配音+封面，见「交付边界」）
-- ❌ 修改后默认渲染验证（仅按需验证）
-
-**视觉/风格/底色**
-- ❌ 视频底部进度条；顶部 eyebrow / 底部品牌带
-- ❌ 英文 chip/pill 短标（如 `[BUG]`）
-- ❌ 未记录视觉主题/色板的实际 HEX 值就开工；同片混用多套色板或让不同组件各自硬编码颜色
-- ❌ 兼容旧主题时，`tech-mint` 下 Effect AbsoluteFill 实色背景（遮住 StarfieldDrift）；`kurzgesagt`/`vox` 则相反，必须纯色块底
-- ❌ `kurzgesagt`/`vox` 模式仍挂 StarfieldDrift / 用渐变底 / 加漂浮粒子（退化成 AI slop）
-- ❌ `kurzgesagt` 一镜堆多概念（每镜只讲一件事、只放一个核心图形）
-- ❌ `vox` 无论证结构（须「抛问题→给背景→层层推进→落判断」，标注跟随口播逐帧点亮）
-- ❌ scenes.json 缺 `styleMode`（顶层兼容字段）、`shot_type` 或 `visualGrammar`（每镜表达路由字段）——Step3 无法可靠路由
-- ❌ 生图（`flat`/`atmosphere`）提示词不带 AI slop 负向串（定义见 references/visual-system.md）
-- ❌ 用生图模型画数据图表/信息图（数字必糊）——有字有数走 designai-infographic-image 或 Remotion 精绘
-- ❌ Effect 内时间用百分比（用绝对帧数）
-- ❌ Effect 内 3D rotateY 翻页（竖屏变形）
-- ❌ Effect 字号过小（说明≥40px，标题≥80px，Badge≥28px）
-- ❌ Effect 内容元素 `top` 值小于 150px——顶部 0–150px 为平台留白区，内容从 `top: 150` 起；背景装饰层（全幅散点/粒子/纹理，无文字无图形）不受此限制
-- ❌ Effect 内短标签/短词（版本号、语言名、卡片标题、Badge）未加 `whiteSpace: "nowrap"` 导致换行
-- ❌ 配图 objectFit: cover（用 contain）
-- ❌ SVG 内彩色 emoji（走 resvg 渲染的一律替换成 Unicode 符号）
-
-**Effect/画面兑现**
-- ❌ subtitle 含可视化素材（对比/数据/流程/枚举）却未在 Effect 中呈现（须逐 scene 过「画面兑现检查」）
-- ❌ 总览 scene 后分项无视觉锚点（用 WallHeader 挂顶）
-- ❌ 长知识场景（K 要素且 >8s）复用纯锚点型 Effect（WallHeader 等仅标题组件），画面信息量远低于旁白
-- ❌ 多个信息量不同的场景硬套同一锚点型 Effect 凑数（信息密度不够应新建专用内容型 Effect）
-- ❌ 多个 scene 共用同一 Effect 组件（每 scene 必须独立 tsx `{sceneId}-{EffectName}.tsx`）
-- ❌ Effect 文件名把 sceneId 放在后面（如 `LoopEffect-S19.tsx`）——查找键必须在最前，否则 `ls` 与编辑器模糊搜索按语义名排序，和片子时间轴无关，改某一镜要先全目录 grep 才能定位
-- ❌ 相邻 Effect 视觉语言完全另起（无元素/位置/强调色任一承接），整片像 N 张互不相干的图轮播
-- ❌ 过渡镜只放一句标题（过渡镜必须画出"上镜收束 + 下镜雏形"两个形态）
-- ❌ 相邻镜入场/出场方向互相打架（上镜右滑出、下镜右滑入）
-
-**字幕**
-- ❌ 字幕单行超过13视觉字符（中文计1，英文计0.55）导致折行
-- ❌ 字幕多行堆叠（串行：旧行消失→间隙→新行出现，任何时刻只有一行）
-- ❌ 无操作者要求就加英文副行/中英对照（默认单语中文，双语会破坏单行门禁与字号体系）
-- ❌ 字幕 bottom < 250px（平台安全区锁定）
-- ❌ 标题超过16个字符（超出截断，加 nowrap 确保不换行）
-- ❌ splitToLines 时序溢出 segEnd（chunks 过多导致后半段字幕不显示）
-- ❌ chunkText 产生纯标点片段（切割后无汉字/字母/数字的 chunk 须过滤）
-- ❌ 字幕分片末尾保留标点（，,。；;、等）——标点仅用于切割，展示时去掉分片末尾标点
-
-**音频/TTS**
-- ❌ 默认女声 Xiaoxiao（默认 ChatTTS gentle_female / Edge-TTS YunxiNeural 男声）
-- ❌ 自行判断题材后改用 `gentle_female` 以外的音色（如科普题材擅自换 `06_kepu_male_seed333`）——音色锁定 `gentle_female`，仅当操作者明确点名时才换
-- ❌ 把"全局音色"当作样式确认表的可选项去询问操作者（已锁定，不询问）
-- ❌ TTS 文本含英文术语、数字字母混排、英文专有名词——以下三类 ChatTTS 均不稳定，轻则读错，重则吞字，**一律替换为中文**：
-  - ① 纯英文术语（`MySQL` / `config.json` / `safetensors`）→ 同义中文词或直接删除
-  - ② 数字+单位混排（`36G` / `1.56T` / `31M` / `99.9%` / `BF16`）→ 汉字读音（三十六G / 一点五六T / 三十一M / 百分之九十九）
-  - ③ 英文专有名词（`Kimi K3` / `Windows`）→ 音译或括注；若无法音译，在旁白中避开，仅保留在 subtitle 中显示
-- ❌ narration 与 subtitle 内容不一致（仅允许发音替换）
-- ❌ ChatTTS 用 CLI 模式（`chattts_cli.py`）批量生成——重复加载模型必超时，必须用 `chattts_batch.py`
-- ❌ Node.js 调用 Python 时未设 `PYTHONPATH: "/Users/sunzhenchao/ChatTTS"`（否则 ModuleNotFoundError）
-- ❌ 生成 TTS 前未先单句验证 ChatTTS 可用性
-- ❌ TTS 重新生成后未同步更新 scenes.json：① `sync-durations.mjs` 更新 durationSec；② ffprobe 重算各 part 时长回写 startSec（两步缺一不可）
-- ❌ TTS 后未做音量归一化（全部 MP3 用 ffmpeg loudnorm 归一化到 -16.60 LUFS）
-- ❌ 第一个 scene 音频未做降速处理（全量 TTS 完成后必须对 S01 执行 `atempo=0.9` 降速 + 重新归一化 + sync-durations）
-- ❌ 单场景重新生成时 output 路径使用相对路径——`chattts_batch.py` 内部 `os.chdir(CHATTS_ROOT)` 会使相对路径失效，必须用 `os.path.abspath()` 生成绝对路径
-- ❌ 在语速均匀（极差 ≤1.0 字/秒）时仍对 ≤13 字短句逐句单独 TTS——短句单独合成韵律必断裂，应走单段 TTS + 字幕比例分配
-
-**封面/发布**
-- ❌ 封面省略格式化核心内容（编号/色块/对比，禁纯文字段落）
-- ❌ V2 封面背景与视频首帧不一致
-
-**叙事结构**
-- ❌ 连续叙述拆成两个 scene（用 subtitleSegments 合并）
-- ❌ 跨章节直接硬切（上一镜讲流程、下一镜讲判定），中间不给过渡镜
-- ❌ 新概念镜首句无承接语也无回指（「但/所以/到这一步/那么」或回指上镜名词，至少有一样）
-- ❌ 衔接检查表里留下未处理的 ❌ 项就进入 Step3
-- ❌ 内容讲完直接切黑，没有 Outro scene / 没有静场留白 / 没有整片渐隐（见 Step 5.5，三件套缺一不可）
-- ❌ Outro 里塞新知识点（Outro 只做回顾/金句/署名，出现新信息等于又开了一个话头，更生硬）
-- ❌ 有 `tailSec` 却没同步改 `sync-durations.mjs`（重跑 TTS 会冲掉留白）或没同步改 `Scene.tsx` 字幕区间（字幕被摊进静场，比人声慢 30~40%）
-- ❌ Outro Effect 的最后触发帧超出音频帧数（静场段还在弹元素，等于没有留白）
-
----
-
-## Effect 库（按语义选用，主要用于 `tech-mint`；`kurzgesagt`/`vox` 见对应模板）
-
-> 本表是现有组件清单，不等于动效模式目录。选型先读 `references/motion-system.md`，再将模式映射到下方已有组件。
+第 1–6 步只产生研究与方案文件；项目生产文件、音频、素材与封面在批准后产生。`scenes.json` 保留实际 `durationSec` 字段，不能用预估时长冒充音频实测。项目级临时统计放 `制作过程/临时文件/`，人工 QA 放 `制作过程/渲染质检/`，`out/` 只供人工最终 MP4。
+
+## 关键约束
+
+- 唯一生产依据是有效批准的 `制作过程/视频制作方案.json` 与同版草稿；第 7/8/9 步先重新读两者全字段，再用项目脚本核对，文字检查通过不代表 palette、motionPlan 或版本全覆盖。
+- 所有生成色值引用 `palette.ts` 的 `bg / surface / ink / sub / accent / accent2`，实际六键值来自 `references/色板.md`，片尾遮罩同 `bg`；不逐镜硬编码或额外引色。
+- 新项目排版版本review-v1-fixed：数值唯一来源 `assets/typography.json`，语义规则见typography.md。顶部标题52/800/sans、知识胶囊44/900、核心节点44/800/sans、结论44/800、字幕70/600/文楷、heroTitle96/900、heroSymbol140/900；字号/字重/行高/fontRole由共享组件一起绑定，不在Effect中自由覆盖。手写镜不改变顶部标题；不强制给钩子/Outro新增章节标题。旧ep5-v2-fixed工程不主动迁移。
+- 默认禁顶部 eyebrow、品牌带、视频进度条、英文 chip/pill；即使旧项目实测有这些元素，也不自动加入新项目。section/series token 的存在不意味着默认增加栏目带。
+- 统一安全区：顶部 0–150px 留白，内容 top≥150、左右≥40，主视觉建议止于 y=1360；字幕 top=1440、左右≥56、bottom≥250，y=1700–1920 不放内容。
+- 字幕固定70px、单行≤13视觉字符，串行逐行、去尾标点、过滤纯标点片段、禁 nowrap 和动态缩字；默认中文。旁白与字幕仅允许中文发音等价替换，不丢信息。
+- 每 scene 独立 `{sceneId}-{EffectName}.tsx`，可复用底层组件；K 类且 >8s 的知识镜不能只有锚点标题。先查组件再新增，不用多个主动作堆特效。
+- 默认 paper + vox-light 平涂，不启用星空/渐变/发光；旧星空实现只供已批准旧项目兼容，不复制为新项目默认。
+- 新项目独立 `npm install`，不复制其他项目 node_modules；复用全局 Chrome Headless Shell，缺失先提示操作者处理，不触发项目级重复下载。
+- Outro 提前规划为独立最后一镜，只回顾/金句/署名；`tailSec=2.0–2.5s`、整片渐隐30–35帧；字幕只占有声区间，静场只呼吸/渐隐。
+- 不新增 emoji、不新增代码注释；素材中的彩色 emoji 不直接送 resvg，改成可用符号或矢量图形。
+- 第 9 步默认完成交付并停止；第 10 步人工启动，类型/源码检查不能替代渲染视觉验收。
+
+## Effect 库（现有清单，按语义查找）
+
+本表不是动效模式目录。先读 `references/motion-system.md`，再查目标项目的真实实现；旧色值、旧字号与旧背景须迁移到批准 token，名称出现不代表当前项目已存在组件或已验收。
 
 | Effect | 类型 | 适用语义 | 视觉手法 |
 |---|---|---|---|
-| `CognitiveTrapEffect` | 内容型 | 看似简单/实为陷阱 | 汉字裂开→警示环+闪电 |
-| `UserReactionsEffect` | 内容型 | 用户真实反馈 | 人头+4个错峰气泡 |
-| `MindsetRulersEffect` | 内容型 | 二元对立 | 两条进度尺+巨大≠ |
-| `PriorityDownweightEffect` | 内容型 | 本该优先→被降权 | 卡片从顶拖底，金→红 |
-| `PiggyBankEffect` | 内容型 | 体验漏洞 | 存钱罐进绿币漏红币 |
-| `GoldenQuoteEffect` | 内容型 | 金句收尾 | 金边卡片逐行点亮 |
-| `WordArithmetic` | 内容型 | 反直觉等式 | 逐token浮现 |
-| `ModalIslands` | 内容型 | 多模态隔阂 | 三色块+断裂虚线 |
-| `PunWordSplit` | 内容型 | 一词多义 | 汉字裂开两半 |
-| `WallHeader` | 锚点型 | 跨场景锚点（仅标题） | 数字chip+标签挂顶 |
-| `OutroRecapEffect` | 收束型 | 片尾三步回顾 / 金句署名 | 编号胶囊错峰弹入+横线收口+金句呼吸+出处行 |
+| `CognitiveTrapEffect` | 内容型 | 看似简单/实为陷阱 | 汉字裂开、警示环与符号 |
+| `UserReactionsEffect` | 内容型 | 用户真实反馈 | 人物与错峰气泡 |
+| `MindsetRulersEffect` | 内容型 | 二元对立 | 两条进度尺与≠ |
+| `PriorityDownweightEffect` | 内容型 | 本该优先却被降权 | 卡片从顶拖底，语义强调变化 |
+| `PiggyBankEffect` | 内容型 | 体验漏洞 | 投入与流失示意 |
+| `GoldenQuoteEffect` | 内容型 | 金句收尾 | 卡片逐行点亮 |
+| `WordArithmetic` | 内容型 | 反直觉等式 | 逐 token 浮现 |
+| `ModalIslands` | 内容型 | 多模态隔阂 | 色块与断裂虚线 |
+| `PunWordSplit` | 内容型 | 一词多义 | 汉字拆开 |
+| `WallHeader` | 锚点型 | 跨场景锚点，仅标题 | 数字与标签挂顶 |
+| `OutroRecapEffect` | 收束型 | 回顾/金句/署名 | 编号错峰、横线收口、呼吸与出处 |
 
-> **类型规则**：
-> - **锚点型**：仅显示标题/编号，信息量低。**只能用于 ≤8s 的过渡/挂顶场景**，或作为「内容型 Effect 的顶部标题」组合使用
-> - **内容型**：承载数据/对比/流程/枚举等可视化。**K 要素且 >8s 的知识场景必须用内容型**
-> - 若已有 Effect 都无法兑现 subtitle 的信息密度，**新建专用 Effect**（命名 `{sceneId}-{语义}.tsx`），不要硬套锚点型凑数
+锚点型只用于≤8s 的过渡/挂顶，或组合为内容型顶部标题；长知识镜必须用内容型。已有组件无法兑现信息密度时才规划专用 Effect；正式库准入所需的渲染回归样例在第 10 步人工验证，不提前宣称已通过。
 
----
+## 详细规范路由
 
-## 与其他 skill 协作
-
-### 视觉素材生成 skill（已安装，接口速查；路由归属见 Step3 表，不在此重复）
-
-| skill | 服务的 shot_type | 接口要点 |
-|---|---|---|
-| `designai-infographic-image` | infographic / chart | 支持 9:16；依赖 `designai-generate-image`；stdout 末行输出图片 URL |
-| `designai-generate-image` | flat / atmosphere | 默认 GPT-Image-2；stdout 末行输出图片 URL，落盘 `.last_image_url` |
-| `prompt-generator` | flat / atmosphere（前置） | 纯本地模板，`prompt.sh image "主题" --style ...`；必须追加 AI slop 负向串 |
-| `designai-process-map` | process | 输出 mermaid → 图，默认 flowchart TD |
-| `script-visual-breakdown` | S2→S3 拆解 | 输入人物小传+剧本，输出多图参考结构化表格 |
-
-> `vox` 图表禁止用生图模型画（数字必糊），走 infographic 或 Remotion 精绘。AI slop 负向串定义见 references/visual-system.md「AI slop 红线」。
-
-### 场景表达手法（按 scene 语义）
-
-| scene类型 | 推荐skill |
+| 内容 | 何时读取 |
 |---|---|
-| 抽象概念/数据可视化 | `algorithmic-art` |
-| 仿真UI/Web截图 | `frontend-design` |
-| 海报/信息图 | `canvas-design` |
-| 矢量动效 | `lottie` + `@remotion/lottie` |
-| 整片调性切换 | `theme-factory` |
-| 流程图/架构图 | `drawio-flowchart` |
-| Skill维护 | `skill-creator` |
+| `references/research-workflow.md`、`references/scientific-review.md` | 第 1–2 步源材料与证据核查 |
+| `references/narrative-design.md` | 第 3 步叙事、覆盖、情绪、Outro |
+| `references/visual-planning-workflow.md` | 第 4 步唯一执行入口，顺序完成 4A–4D |
+| `references/visual-system.md`、`references/色板.md`、`references/镜头语言.md`、`references/motion-system.md`、`references/typography.md` | 第 4 步按入口查相关条目，全局 token 一次读取；第 7 步检查实际所用规范 |
+| `references/video-plan.md` | 第 5 步 JSON 契约与第 6 步版本审批 |
+| `references/draft-review-workflow.md` | 第 5–6 步完整评测、统计与双向同步 |
+| `references/production-workflow.md`、`references/code-templates.md` | 第 7–9 步素材、实现、音频与封面 |
+| `references/render-quality-check.md` | 第 10 步人工启动与返工路由 |

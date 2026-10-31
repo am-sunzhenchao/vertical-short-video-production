@@ -42,9 +42,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--jobs", required=True, help="JSON file with list of {text, output, style}")
     args = parser.parse_args()
+    args.jobs = os.path.abspath(args.jobs)
 
     STYLE_PRESETS = load_presets()
-    DEFAULT_PRESET = "calm_male"
+    DEFAULT_PRESET = "gentle_female"
 
     with open(args.jobs) as f:
         jobs = json.load(f)
@@ -59,10 +60,14 @@ def main():
         text   = job["text"]
         output = job["output"]
         style  = job.get("style", DEFAULT_PRESET)
-        preset = STYLE_PRESETS.get(style, STYLE_PRESETS[DEFAULT_PRESET])
-        spk_emb = load_speaker(preset["speaker_file"])
 
         try:
+            if not os.path.isabs(output):
+                raise ValueError("音频输出必须为绝对路径")
+            if style not in STYLE_PRESETS:
+                raise ValueError(f"未知音色: {style}")
+            preset = STYLE_PRESETS[style]
+            spk_emb = load_speaker(preset["speaker_file"])
             infer_kwargs = dict(
                 skip_refine_text=preset.get("skip_refine", True),
                 params_infer_code=ChatTTS.Chat.InferCodeParams(
@@ -101,6 +106,8 @@ def main():
     with open(args.jobs + ".result.json", "w") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
     print(f"[batch] Done. {sum(r['ok'] for r in results)}/{len(results)} succeeded.", flush=True)
+    if any(not r["ok"] for r in results):
+        raise SystemExit(1)
 
 if __name__ == "__main__":
     main()

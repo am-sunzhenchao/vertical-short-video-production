@@ -1,0 +1,32 @@
+{
+  "name": "vertical-short-video-template",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "remotion studio src/index.tsx",
+    "start": "remotion studio src/index.tsx",
+    "render": "node scripts/render.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "node scripts/run.mjs validate-project",
+    "validate": "node scripts/run.mjs validate-project",
+    "export": "node scripts/run.mjs export-plan",
+    "audio": "node scripts/run.mjs audio-pipeline",
+    "tts": "node scripts/run.mjs audio-pipeline",
+    "sync": "node scripts/run.mjs audio-pipeline --sync-only",
+    "cover": "node scripts/run.mjs render-cover"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.290",
+    "remotion": "4.0.290",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/node": "^22.0.0",
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0",
+    "@resvg/resvg-js": "^2.6.2"
+  }
+}

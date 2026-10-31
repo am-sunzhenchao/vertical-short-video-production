@@ -1,0 +1,31 @@
+{
+  "version": "review-v1-fixed",
+  "fonts": { "sans": "'PingFang SC', sans-serif", "handwritten": "'LXGW WenKai', 'PingFang SC', sans-serif" },
+  "roles": {
+    "title": { "fontSize": 52, "fontWeight": 800, "lineHeight": 1.25, "fontRole": "sans" },
+    "sceneHeading": { "fontSize": 52, "fontWeight": 800, "lineHeight": 1.25, "fontRole": "sans" },
+    "knowledgeChip": { "fontSize": 44, "fontWeight": 900, "lineHeight": 1.3, "fontRole": "sans" },
+    "nodeLabel": { "fontSize": 44, "fontWeight": 800, "lineHeight": 1.3, "fontRole": "sans" },
+    "conclusion": { "fontSize": 44, "fontWeight": 800, "lineHeight": 1.4, "fontRole": "sans" },
+    "diagramLabel": { "fontSize": 38, "fontWeight": 700, "lineHeight": 1.4, "fontRole": "sans" },
+    "chartLabel": { "fontSize": 38, "fontWeight": 700, "lineHeight": 1.4, "fontRole": "sans" },
+    "body": { "fontSize": 42, "fontWeight": 700, "lineHeight": 1.5, "fontRole": "sans" },
+    "note": { "fontSize": 36, "fontWeight": 600, "lineHeight": 1.5, "fontRole": "sans" },
+    "term": { "fontSize": 56, "fontWeight": 900, "lineHeight": 1.3, "fontRole": "sans" },
+    "quote": { "fontSize": 58, "fontWeight": 900, "lineHeight": 1.4, "fontRole": "sans" },
+    "recapHeading": { "fontSize": 50, "fontWeight": 800, "lineHeight": 1.3, "fontRole": "sans" },
+    "subtitle": { "fontSize": 70, "fontWeight": 600, "lineHeight": 1.6, "fontRole": "handwritten" },
+    "heroTitle": { "fontSize": 96, "fontWeight": 900, "lineHeight": 1.15, "fontRole": "sans" },
+    "heroSymbol": { "fontSize": 140, "fontWeight": 900, "lineHeight": 1, "fontRole": "sans" },
+    "subheading": { "fontSize": 44, "fontWeight": 800, "lineHeight": 1.3, "fontRole": "sans" },
+    "recapTitle": { "fontSize": 50, "fontWeight": 800, "lineHeight": 1.3, "fontRole": "sans" },
+    "warning": { "fontSize": 52, "fontWeight": 900, "lineHeight": 1.3, "fontRole": "sans" },
+    "section": { "fontSize": 34, "fontWeight": 700, "lineHeight": 1.4, "fontRole": "sans" },
+    "series": { "fontSize": 30, "fontWeight": 700, "lineHeight": 1.4, "fontRole": "sans" },
+    "secondary": { "fontSize": 30, "fontWeight": 600, "lineHeight": 1.4, "fontRole": "sans" },
+    "badge": { "fontSize": 26, "fontWeight": 900, "lineHeight": 1.3, "fontRole": "sans" },
+    "index": { "fontSize": 30, "fontWeight": 900, "lineHeight": 1.3, "fontRole": "sans" },
+    "arrow": { "fontSize": 32, "fontWeight": 700, "lineHeight": 1, "fontRole": "sans" },
+    "heroArrow": { "fontSize": 56, "fontWeight": 900, "lineHeight": 1, "fontRole": "sans" }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["schemaVersion", "planVersion", "slug", "title", "coreQuestion", "coreAnswer", "audience", "scope", "video", "styleMode", "paletteName", "palette", "typography", "themeOverride", "narrative", "audioPlan", "review", "evaluation", "scenes"],
+  "properties": {
+    "schemaVersion": {"const": "1.0"},
+    "planVersion": {"type": "integer", "minimum": 1},
+    "slug": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"},
+    "title": {"type": "string", "minLength": 1},
+    "sourcePath": {"type": "string"}, "researchPath": {"type": "string"}, "draftPath": {"type": "string"}, "engineDir": {"type": "string"},
+    "coreQuestion": {"type": "string"}, "coreAnswer": {"type": "string"}, "audience": {"type": "string"}, "scope": {"type": "string"},
+    "video": {"type": "object", "required": ["width", "height", "fps"], "properties": {"width": {"const": 1080}, "height": {"const": 1920}, "fps": {"const": 25}}},
+    "styleMode": {"enum": ["vox-light", "vox", "tech-mint", "kurzgesagt", "doodle-note"]},
+    "paletteName": {"type": "string", "minLength": 1},
+    "palette": {"type": "object", "required": ["bg", "surface", "ink", "sub", "accent", "accent2"], "additionalProperties": false, "properties": {"bg": {"$ref": "#/$defs/hex"}, "surface": {"$ref": "#/$defs/hex"}, "ink": {"$ref": "#/$defs/hex"}, "sub": {"$ref": "#/$defs/hex"}, "accent": {"$ref": "#/$defs/hex"}, "accent2": {"$ref": "#/$defs/hex"}}},
+    "typography": {"type": "object", "required": ["version", "tokens", "roles", "emphasisOffset", "fontFamily", "fontRoles"], "properties": {"version": {"type": "string", "minLength": 1}, "roles": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "object", "required": ["fontSize", "fontWeight", "lineHeight", "fontRole"], "properties": {"fontSize": {"type": "number", "exclusiveMinimum": 0}, "fontWeight": {"type": "number", "minimum": 100, "maximum": 1000}, "lineHeight": {"type": "number", "exclusiveMinimum": 0}, "fontRole": {"enum": ["sans", "handwritten"]}}}}, "tokens": {"type": "object", "minProperties": 17, "additionalProperties": {"type": "number", "exclusiveMinimum": 0}}, "emphasisOffset": {"const": 8}, "fontFamily": {"type": "string", "minLength": 1}, "fontRoles": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}}}},
+    "themeOverride": {"type": ["object", "null"]},
+    "narrative": {"type": "object", "required": ["outline", "coverage", "emotionRhythm", "outro"], "properties": {"outline": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "coverage": {"type": "array", "items": {"type": "object"}}, "emotionRhythm": {"type": "string"}, "outro": {"type": "object", "required": ["sceneId", "kind", "fadeOutFrames"], "properties": {"sceneId": {"type": "string"}, "kind": {"enum": ["recap", "quote"]}, "fadeOutFrames": {"type": "integer", "minimum": 30, "maximum": 35}}}}},
+    "audioPlan": {"type": "object", "required": ["engine", "defaultStyle", "alignmentMode", "speedSpread", "timingBasis", "loudnessLUFS", "openingTempo", "PAD"], "properties": {"engine": {"type": "string", "minLength": 1}, "defaultStyle": {"type": "string", "minLength": 1}, "alignmentMode": {"$ref": "#/$defs/alignment"}, "speedSpread": {"type": "number", "minimum": 0}, "timingBasis": {"enum": ["estimated", "measured"]}, "loudnessLUFS": {"const": -16.6}, "openingTempo": {"const": 0.9}, "PAD": {"const": 0}, "scenesTempoById": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0.5, "maximum": 2}}}},
+    "review": {"type": "object", "required": ["status", "reviewedVersion", "approvedBy", "approvedAt", "approvalEvidence"], "properties": {"status": {"enum": ["pending", "approved"]}, "reviewedVersion": {"type": ["integer", "null"]}, "approvedBy": {"type": ["string", "null"]}, "approvedAt": {"type": ["string", "null"]}, "approvalEvidence": {"type": ["string", "null"]}}},
+    "evaluation": {"type": "object", "required": ["planVersion", "status", "weightedScore"], "properties": {"planVersion": {"type": "integer", "minimum": 1}, "status": {"enum": ["not-evaluated", "pass", "needs-optimization", "rewrite", "accepted-with-issues"]}, "weightedScore": {"type": ["number", "null"], "minimum": 1, "maximum": 10}}},
+    "scenes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/scene"}}
+  },
+  "$defs": {
+    "hex": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+    "alignment": {"enum": ["single-scene-proportional", "multi-segment-measured"]},
+    "strings": {"type": "array", "items": {"type": "string"}},
+    "scene": {
+      "type": "object",
+      "required": ["id", "title", "purpose", "knowledgeIds", "claimIds", "sourceIds", "narration", "subtitle", "subtitleSegments", "estimatedDurationSec", "tailSec", "shot_type", "shotLang", "visualGrammar", "visualElements", "motionPlan", "component", "componentLookup", "continuity", "emotion", "audioNotes"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^S[0-9]+[A-Za-z0-9]*$"}, "title": {"type": "string"}, "purpose": {"type": "string"},
+        "knowledgeIds": {"$ref": "#/$defs/strings"}, "claimIds": {"$ref": "#/$defs/strings"}, "sourceIds": {"$ref": "#/$defs/strings"},
+        "narration": {"type": "string", "minLength": 1}, "subtitle": {"type": "string", "minLength": 1}, "ttsStyle": {"type": "string"}, "alignmentMode": {"$ref": "#/$defs/alignment"},
+        "estimatedDurationSec": {"type": "number", "exclusiveMinimum": 0}, "tailSec": {"type": "number", "minimum": 0},
+        "subtitleSegments": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["text", "narration", "estimatedStartSec"], "properties": {"text": {"type": "string", "minLength": 1}, "narration": {"type": "string", "minLength": 1}, "estimatedStartSec": {"type": "number", "minimum": 0}, "startSec": {"type": "number", "minimum": 0}}}},
+        "shot_type": {"enum": ["effect", "infographic", "chart", "process", "flat", "atmosphere", "doodle"]},
+        "shotLang": {"enum": ["KG-y1", "T0", "W1", "I1", "K1", "H1", "E1", "C1", "V1", "Z1"]}, "visualGrammar": {"type": "string"},
+        "visualElements": {"type": "array", "items": {"type": "object", "required": ["id", "type", "content", "textRole", "fontRole", "colorRole", "claimIds"], "properties": {"id": {"type": "string", "minLength": 1}, "type": {"type": "string"}, "textRole": {"type": ["string", "null"]}, "fontRole": {"type": ["string", "null"]}, "colorRole": {"enum": ["bg", "surface", "ink", "sub", "accent", "accent2"]}, "claimIds": {"$ref": "#/$defs/strings"}}}},
+        "motionPlan": {"type": "object", "required": ["knowledgeGoal", "knowledgeRelation", "primaryPattern", "secondaryPattern", "selectionReason", "camera", "intensity", "continuityFrom", "allowedMotion", "forbiddenMotion", "evidenceRisk"], "properties": {"knowledgeGoal": {"type": "string"}, "knowledgeRelation": {"type": "string"}, "primaryPattern": {"type": "string"}, "secondaryPattern": {"type": ["string", "null"]}, "selectionReason": {"type": "string"}, "allowedMotion": {"$ref": "#/$defs/strings"}, "forbiddenMotion": {"$ref": "#/$defs/strings"}}},
+        "component": {"type": "object", "required": ["name", "params"], "properties": {"name": {"type": "string", "pattern": "^S[0-9]+[A-Za-z0-9]*-[A-Za-z_$][A-Za-z0-9_$-]*$"}, "params": {"type": "object"}}},
+        "componentLookup": {"type": "object"}
+      }
+    }
+  }
+}

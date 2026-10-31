@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 用法: node scripts/svg2png.mjs <file.svg> [输出宽度，默认1080]
-// 例:   node scripts/svg2png.mjs cover/封面v1-kurz.svg
-//       node scripts/svg2png.mjs cover/封面v1-kurz.svg 2160
+// 例:   node scripts/svg2png.mjs <project>/发布素材/封面v1-kurz.svg
+//       node scripts/svg2png.mjs <project>/发布素材/封面v1-kurz.svg 2160
 import { Resvg } from "@resvg/resvg-js";
 import { readFileSync, writeFileSync } from "fs";
 
