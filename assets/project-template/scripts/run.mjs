@@ -8,7 +8,7 @@ try {
   const config = JSON.parse(readFileSync(resolve(root, 'project.config.json'), 'utf8'));
   if (!isAbsolute(config.projectRoot ?? '') || !isAbsolute(config.skillRoot ?? '') || typeof config.slug !== 'string' || !config.slug || typeof config.compositionId !== 'string' || !config.compositionId) throw new Error('Invalid project.config.json');
   const [command, ...args] = process.argv.slice(2);
-  const commands = new Set(['export-plan', 'audio-pipeline', 'render-cover', 'validate-project']);
+  const commands = new Set(['export-plan', 'audio-pipeline', 'render-cover', 'validate-project', 'render-frame']);
   if (!commands.has(command)) throw new Error(`Unsupported skill command: ${command}`);
   const result = spawnSync(process.execPath, [resolve(config.skillRoot, `scripts/${command}.mjs`), '--project-root', config.projectRoot, ...args], { stdio: 'inherit', timeout: command === 'audio-pipeline' ? 1200000 : 120000 });
   if (result.error) throw result.error;

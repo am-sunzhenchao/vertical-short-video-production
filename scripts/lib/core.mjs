@@ -12,7 +12,7 @@ export const digest = value => crypto.createHash('sha256').update(typeof value =
 export const clone = value => structuredClone(value);
 export function args(argv = process.argv.slice(2)) {
   const out = {};
-  const flags = new Set(['install', 'refresh', 'metadata-only', 'sync-only', 'generate']);
+  const flags = new Set(['install', 'pull', 'refresh', 'metadata-only', 'sync-only', 'generate']);
   for (let i = 0; i < argv.length; i++) {
     if (!argv[i].startsWith('--')) throw new Error(`Unexpected argument ${argv[i]}`);
     const key = argv[i].slice(2);
@@ -69,10 +69,11 @@ export function main(fn, url) {
     const help = {
       'init-project.mjs': '--project-root <绝对路径> [--plan <项目内路径>] [--browser <可执行路径>] [--install]',
       'export-plan.mjs': '--project-root <绝对路径> [--plan <项目内路径>]',
-      'render-review.mjs': '--project-root <绝对路径> [--apply-patch <项目内JSON> --expected-version <版本>]；刷新前先读取差异，勿覆盖人工修改',
+      'render-review.mjs': '--project-root <绝对路径> [--pull | --apply-patch <项目内JSON> --expected-version <版本>]；--pull 把审阅稿中人工修改的标题/字幕/旁白回写方案并升版',
       'validate-project.mjs': '--project-root <绝对路径> [--metadata-only]；默认需要生产工程typescript依赖',
       'audio-pipeline.mjs': '--project-root <绝对路径> [--generate --tts-batch chattts] [--scene S01] [--sync-only]；自定义TTS可用--tts-command/--tts-args <JSON数组>',
       'render-cover.mjs': '--project-root <绝对路径> --svg <项目内SVG> --approved-digest <获批SHA256>；或--cover-review-manifest <项目内JSON>',
+      'render-frame.mjs': '--project-root <绝对路径> --scene S01 [--at <秒，默认中点>] [--clip <秒数>]；仅操作者手动运行，输出到 制作过程/渲染质检/',
       'script-stats.mjs': '--raw <路径> (--plan <路径> | --scenes <路径>) [--json]'
     };
     console.log(`${name}: ${help[name] || '--project-root <绝对路径>'}`);

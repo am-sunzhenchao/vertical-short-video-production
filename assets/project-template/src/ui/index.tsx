@@ -1,5 +1,5 @@
 import React from 'react';
-import { fontSans, fontWenkai, typographyRoles } from '../effects/typography';
+import { fontSans, fontWenkai, fontMono, typographyRoles } from '../effects/typography';
 import { palette } from '../effects/palette';
 import type { FontRole, TextRole, VisualElement } from '../types';
 
@@ -27,6 +27,14 @@ export const KnowledgeChip: React.FC<TextProps> = ({ element, motion }) => {
   return <div style={{ position: 'absolute', left: x, top: y, width, height, boxSizing: 'border-box', background: palette.surface, border: `3px solid ${palette.accent}`, borderRadius: 999, padding: '12px 20px', ...motion }}><div data-element-id={element.id} style={{ ...textStyle('knowledgeChip', element.fontRole), color: color(element.colorRole), whiteSpace: 'nowrap' }}>{element.content}</div></div>;
 };
 export const ChipGroup: React.FC<{ elements: VisualElement[]; frame: number; triggers: number[]; entranceFrames: number }> = ({ elements, frame, triggers, entranceFrames }) => <>{elements.map((element, index) => {
+  const progress = Math.min(1, Math.max(0, (frame - triggers[index]) / Math.max(1, entranceFrames)));
+  return <KnowledgeChip key={element.id} element={element} motion={{ opacity: progress }} />;
+})}</>;
+export const CodeBlock: React.FC<TextProps> = ({ element, motion }) => {
+  const { x, y, width, height } = element.position;
+  const lines = element.content.split('\n');
+  return <div style={{ position: 'absolute', left: x, top: y, width, height, boxSizing: 'border-box', background: '#2B2A27', borderRadius: 12, padding: '16px 20px', ...motion }}><div data-element-id={element.id} style={{ ...textStyle(element.textRole, 'mono'), color: '#E8E6E3', whiteSpace: 'pre', overflowWrap: 'normal', fontFamily: fontMono }}>{element.content}</div></div>;
+};
   const progress = Math.min(1, Math.max(0, (frame - triggers[index]) / Math.max(1, entranceFrames)));
   return <KnowledgeChip key={element.id} element={element} motion={{ opacity: progress, transform: `translateY(${(1 - progress) * 18}px)` }} />;
 })}</>;

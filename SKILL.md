@@ -16,7 +16,7 @@ description: Use when producing a Chinese vertical (1080×1920) narrated short v
 
 ## 主流程内路径约定
 
-所有新项目产物集中在项目根下的约定目录：研究与方案记录放 `制作过程/`，项目级统计输入与统计工具放 `制作过程/临时文件/`，人工 QA 关键帧、短片段与检查记录放 `制作过程/渲染质检/`，封面与发布文案放 `发布素材/`；生产工程保持下方交付树结构。`sourcePath / researchPath / draftPath` 都相对于项目根解析，不相对于方案所在目录。镜头正文直接合并到 `制作过程/视频方案审阅稿.md`，不另建额外草稿视图。系统 `tmpdir()`、进程间任务文件及一次性环境测试等 OS 临时机制保留，它们不属于需保留的制作记录。
+所有新项目产物集中在项目根下的约定目录：研究与方案记录放 `制作过程/`，项目级统计输入与统计工具放 `制作过程/临时文件/`，人工 QA 关键帧、短片段与检查记录放 `制作过程/渲染质检/`，封面与发布文案放 `发布素材/`；生产工程保持下方交付树结构。`sourcePath / researchPath / draftPath` 都相对于项目根解析，不相对于方案所在目录。`制作过程/视频方案审阅稿.md` 是给人快速决策的精简稿（一屏结论、分镜总览表、模板样例、可改旁白），不含研究底稿、评测明细或 JSON；机器用全字段数据只在 `视频制作方案.json`。系统 `tmpdir()`、进程间任务文件及一次性环境测试等 OS 临时机制保留，它们不属于需保留的制作记录。
 
 旧项目尊重实际记录路径，不自动搬迁，也不同时维护两套权威文件。操作者明确要求迁移时，须同步方案路径字段、命令和脚本中的引用，再复查路径解析与文件一致性；不能只改文件名或文档示例。
 
@@ -28,7 +28,7 @@ description: Use when producing a Chinese vertical (1080×1920) narrated short v
 
 ### Step 2 · 研究与知识提取
 
-按 `references/research-workflow.md` 第 2 步主动核查，保存 `{项目}/制作过程/知识解析与证据.md`：核心问题、知识点 ID、主张 ID、因果/比较/流程关系、来源 ID、证据范围、不确定性与风险。科普、科技、历史、数据内容同时读 `references/scientific-review.md`。科学审查表写入同一 `制作过程/知识解析与证据.md`，第 5 步汇入审阅稿，不另建审查文件。`source_fact` 只是材料所述，不等于已核验事实。研究放行不要求逐镜组件。
+按 `references/research-workflow.md` 第 2 步主动核查，保存 `{项目}/制作过程/知识解析与证据.md`：核心问题、知识点 ID、主张 ID、因果/比较/流程关系、来源 ID、证据范围、不确定性与风险。科普、科技、历史、数据内容同时读 `references/scientific-review.md`。科学审查表写入同一 `制作过程/知识解析与证据.md`，不汇入审阅稿，审阅稿仅链接该文件。`source_fact` 只是材料所述，不等于已核验事实。研究放行不要求逐镜组件。
 
 ### Step 3 · 自动叙事设计
 
@@ -40,7 +40,7 @@ description: Use when producing a Chinese vertical (1080×1920) narrated short v
 
 #### 4A · 明确知识目标与关系
 
-从研究与叙事提取每镜必须看懂的主体、关系、证据边界；此时不选配色或动效。
+从研究与叙事提取每镜必须看懂的主体、关系、证据边界；此时不选配色或动效。源材料含代码、命令、配置或终端示例时，按 `references/research-workflow.md` 的示例登记和 `references/visual-planning-workflow.md` 的“原文代码按需入镜”规则处理：操作教学所需的关键示例进入相关画面，不只用抽象标签代替；无关代码不机械入镜。
 
 #### 4B · 选择表达与主动作
 
@@ -52,19 +52,19 @@ description: Use when producing a Chinese vertical (1080×1920) narrated short v
 
 #### 4D · 小批次兑现与衔接检查
 
-按叙事段落约 3–5 镜一批，逐镜核对主张→画面关系、token 与可执行性，再核对跨批承接。结果写入同一 制作过程/视频方案审阅稿.md 的待整合规划区，Step 5 统一生成正式方案；不得为形式多样强行插氛围镜。
+按叙事段落约 3–5 镜一批，逐镜核对主张→画面关系、token 与可执行性，再核对跨批承接。结果写入方案 JSON 的规划字段（或 `制作过程/临时文件/`），不写入审阅稿；不得为形式多样强行插氛围镜。
 
 ### Step 5 · 结构化方案与评测迭代
 
-读 `references/video-plan.md`、`references/draft-review-workflow.md`。落盘同一 `planVersion` 的 `制作过程/视频制作方案.json` 与 `制作过程/视频方案审阅稿.md`，覆盖完整旁白、字幕、来源/主张映射、逐镜画面、组件参数、动效、时长估计、Outro、色板和字号。
+读 `references/video-plan.md`、`references/draft-review-workflow.md`。落盘同一 `planVersion` 的 `制作过程/视频制作方案.json`（全字段，供模型与脚本）与 `制作过程/视频方案审阅稿.md`（由 `render-review.mjs` 生成的人读精简稿）。JSON 覆盖完整旁白、字幕、来源/主张映射、逐镜画面、组件参数、动效、时长估计、Outro、色板和字号；审阅稿只呈现一屏结论、画面模板样例，以及合并的“分镜与旁白”逐镜块：镜号+标题、约时长 · 画面模板 · 承接自上一镜、旁白（字幕与旁白相同则不重复）。
 
 执行 HKRR、7 维度评测、压缩比统计、知识覆盖与相邻镜衔接检查；按结果最多自动优化 3 轮。加权总分 ≥8 且维度 1–5 无单项 ≤5 才可正常呈现审批；3 轮仍未通过，呈现最优版与剩余问题，由操作者决定。
 
-此阶段直接用Skill维护的 `scripts/script-stats.mjs --raw <实际源材料路径> --plan <实际方案路径>`统计预估有声字数/时长，不重新写统计脚本、不提前生成生产scenes.json。用render-review.mjs生成同版完整视图；人改稿后先处理差异，不覆盖用户修改。
+此阶段直接用Skill维护的 `scripts/script-stats.mjs --raw <实际源材料路径> --plan <实际方案路径>`统计预估有声字数/时长，不重新写统计脚本、不提前生成生产scenes.json。用render-review.mjs生成同版审阅稿；人在审阅稿里改标题/字幕/旁白后无需手动同步：Step 6 读取审阅稿时与第 7/8/9 步开始前，所有生产脚本（init-project、export-plan、audio-pipeline、validate-project、render-cover）都会先检查审阅稿，发现改动自动回写 JSON、版本+1、作废审批并停止，提示重评与重新批准后才能继续制作；也可手动 `render-review.mjs --pull`。
 
 ### Step 6 · 人工 Review 卡点
 
-呈现研究摘要与来源、完整方案、评测表、优化摘要、待决策项，停止等待操作者明确批准当前版本。批准前不写生产代码、不生成素材、不配音；评分通过不等于人工批准。
+只呈现审阅稿路径与一屏结论（镜数、总时长、待决策项、评测分与残留问题），不在对话中贴出整份研究或 JSON；停止等待操作者明确批准当前版本。批准前不写生产代码、不生成素材、不配音；评分通过不等于人工批准。
 
 重新读取文件，不依赖会话记忆。人工改草稿须回写计划、递增版本、重新评测；任何计划变更立即令批准失效，设 `review.status: "pending"`、`review.reviewedVersion: null` 并清空 approvedBy、approvedAt、approvalEvidence。批准时设 `review.status: "approved"`，记录操作者、时间、明确批准依据与相同 reviewedVersion；不把旧版本的“OK/开始”套到新版本。
 
@@ -74,7 +74,7 @@ description: Use when producing a Chinese vertical (1080×1920) narrated short v
 
 使用 `validate-project.mjs`核对全字段、字体角色、版本、路径和组件；旧check-draft-sync仅旁白兼容，不能代替上述检查。运行生成工程typecheck/lint，画面知识兑现与相邻镜关系仍需审查。
 
-检查画面兑现、相邻镜连续性、字幕安全区、帧驱动确定性与 Outro，执行 `npx tsc --noEmit` 等非渲染检查。不自动运行关键帧、短片段或最终 MP4；不能声称视觉通过。
+生产代码就绪后，操作者可手动运行 `render-frame.mjs --scene S01 [--at 秒] [--clip 秒数]` 渲染单帧或短片段到 `制作过程/渲染质检/`，用于真实画面 Review。检查画面兑现、相邻镜连续性、字幕安全区、帧驱动确定性与 Outro，执行 `npx tsc --noEmit` 等非渲染检查。不自动运行关键帧、短片段或最终 MP4；不能声称视觉通过。
 
 ### Step 8 · 配音与真实时长字幕同步
 

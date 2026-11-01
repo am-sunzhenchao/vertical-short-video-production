@@ -1,0 +1,40 @@
+{
+  "note": "样例由 build.mjs 生成，示意版式与动效语法，非真实渲染；配色为 paper 默认色板",
+  "patterns": {
+    "QUESTION_REVEAL": {
+      "label": "问题与答案",
+      "note": "先抛出问题，再揭示答案",
+      "file": "QUESTION_REVEAL.svg"
+    },
+    "BRANCHING_PATH": {
+      "label": "条件分支",
+      "note": "一个起点按条件分成两条路径",
+      "file": "BRANCHING_PATH.svg"
+    },
+    "SEQUENTIAL_REVEAL": {
+      "label": "逐项浮现",
+      "note": "多个要点按顺序依次出现",
+      "file": "SEQUENTIAL_REVEAL.svg"
+    },
+    "CAUSE_EFFECT": {
+      "label": "因果链",
+      "note": "原因经机制导出结果",
+      "file": "CAUSE_EFFECT.svg"
+    },
+    "SIDE_BY_SIDE_COMPARE": {
+      "label": "左右对比",
+      "note": "两种做法并排比较",
+      "file": "SIDE_BY_SIDE_COMPARE.svg"
+    },
+    "SYNTHESIS_LOCKUP": {
+      "label": "要点汇总",
+      "note": "把已讲内容汇总为几项并收口",
+      "file": "SYNTHESIS_LOCKUP.svg"
+    },
+    "OUTRO_RECAP": {
+      "label": "片尾回顾",
+      "note": "金句与已讲要点，随后渐隐",
+      "file": "OUTRO_RECAP.svg"
+    }
+  }
+}

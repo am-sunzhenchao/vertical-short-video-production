@@ -6,7 +6,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {skillRoot, json, writeJson, digest, inside, context, run} from '../../scripts/lib/core.mjs';
 import {approved, validatePlan, typographyAsset, checkSchema, checkEffects} from '../../scripts/lib/validation.mjs';
-import {renderReview, ensureReview, patchPlan, parseReview} from '../../scripts/lib/review.mjs';
+import {renderReview, ensureReview, patchPlan, parseEditable, editableOf, pullReview, reviewMarkdown} from '../../scripts/lib/review.mjs';
 import {exportScenes, generatedFiles, generatedWrite, verifyScenes, transaction} from '../../scripts/lib/production.mjs';
 import {audioPipeline, assertBatchResults, measuredScene, checkMeasuredSpeeds, pythonInvocation, ttsInvocation} from '../../scripts/lib/audio.mjs';
 import {scriptStats, statsMarkdown} from '../../scripts/script-stats.mjs';
@@ -91,7 +91,7 @@ test('paths reject traversal, absolute escape, unsafe slug and symlink', t => {
 });
 test('canonical review preserves all extra global, evaluation and scene fields; user edits fail closed', t => {
   const ctx = fixture(t, false);
-  assert.deepEqual(parseReview(fs.readFileSync(ctx.draftFile, 'utf8')), ctx.plan);
+  assert.deepEqual(parseEditable(fs.readFileSync(ctx.draftFile, 'utf8')), editableOf(ctx.plan));
   ensureReview(ctx);
   fs.appendFileSync(ctx.draftFile, '\n用户补充\n');
   assert.throws(() => ensureReview(ctx), /changed/);
@@ -103,6 +103,47 @@ test('canonical review preserves all extra global, evaluation and scene fields; 
   ctx.plan.evaluation = {planVersion: 2, status: 'not-evaluated', weightedScore: null};
   renderReview(ctx, {refresh: true, 'expected-version': 2, 'confirmed-digest': digest(ctx.plan)});
   ensureReview(ctx);
+});
+test('review is human-sized: no JSON dump, shows scene count, timing, continuity and demo template', t => {
+  const ctx = fixture(t, false);
+  const md = fs.readFileSync(ctx.draftFile, 'utf8');
+  assert.ok(md.split('\n').length < 80);
+  assert.ok(!md.includes('```json'));
+  assert.match(md, /共 \*\*2 镜\*\*/);
+  assert.match(md, /\*\*S01｜/);
+  assert.match(md, /约 4.0s · 因果链/);
+  assert.ok(!md.includes('旁白发音稿'));
+  assert.match(md, /CAUSE_EFFECT/);
+  assert.ok(fs.existsSync(path.join(ctx.projectRoot, '制作过程/模板样例/CAUSE_EFFECT.svg')));
+});
+test('pull writes human edits back to plan, bumps version, resets approval', t => {
+  const ctx = fixture(t, false);
+  assert.equal(pullReview(ctx).changed.length, 0);
+  fs.writeFileSync(ctx.draftFile, fs.readFileSync(ctx.draftFile, 'utf8').replace('旁白：看清原因机制结果', '旁白：新的旁白内容'));
+  const {plan, changed} = pullReview(ctx);
+  assert.deepEqual(changed, ['S01.subtitle', 'S01.narration']);
+  assert.equal(plan.planVersion, 2);
+  assert.equal(plan.review.status, 'pending');
+  assert.equal(plan.scenes[0].narration, '新的旁白内容');
+  assert.equal(plan.scenes[0].subtitleSegments[0].narration, '新的旁白内容');
+  const r = spawnSync(process.execPath, [path.join(skillRoot, 'scripts/render-review.mjs'), '--project-root', ctx.projectRoot, '--pull'], {encoding: 'utf8'});
+  assert.equal(r.status, 0, r.stderr);
+  const after = context({'project-root': ctx.projectRoot});
+  assert.equal(after.plan.planVersion, 2);
+  ensureReview(after);
+});
+test('production scripts auto-pull review edits, reset approval and stop before continuing', t => {
+  const ctx = fixture(t, false);
+  fs.writeFileSync(ctx.draftFile, fs.readFileSync(ctx.draftFile, 'utf8').replace('> 旁白：看清原因机制结果', '> 旁白：改过的字幕'));
+  const r = cli('init-project', ctx);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /auto-synced to plan v2/);
+  const after = context({'project-root': ctx.projectRoot});
+  assert.equal(after.plan.planVersion, 2);
+  assert.equal(after.plan.review.status, 'pending');
+  assert.equal(after.plan.scenes[0].subtitle, '改过的字幕');
+  assert.throws(() => approved(after.plan), /Approval/);
+  ensureReview(after);
 });
 test('patch increments once, resets approvals and evaluation, prevents stale expected-version and approval injection', t => {
   const ctx = fixture(t, false);

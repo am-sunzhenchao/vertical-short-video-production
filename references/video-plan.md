@@ -2,7 +2,7 @@
 
 ## 版本、来源与路径
 
-`制作过程/视频制作方案.json`是结构化权威方案，`制作过程/视频方案审阅稿.md`是同版可编辑视图。sourcePath/researchPath/draftPath相对于项目根解析；生产工程默认 `<slug>-video/`，明确engineDir时必须仍在用户允许项目根内。
+`制作过程/视频制作方案.json`是结构化权威方案，`制作过程/视频方案审阅稿.md`是同版人读精简视图，仅标题/字幕/旁白可编辑并经 `--pull` 回写；它不含全字段 JSON。sourcePath/researchPath/draftPath相对于项目根解析；生产工程默认 `<slug>-video/`，明确engineDir时必须仍在用户允许项目根内。
 
 - schemaVersion=`1.0`，planVersion为正整数。
 - review.status=pending/approved；pending时reviewedVersion、approvedBy、approvedAt、approvalEvidence为null；明确批准后reviewedVersion=planVersion。
@@ -64,7 +64,7 @@
 
 ## 生成、Review与保留实测时序
 
-Step5使用 `render-review.mjs`程序生成全字段视图；用户编辑后先读取差异，回写同版JSON、递增版本、重置审批并重评。视图摘要不能替代完整JSON。冲突未解决时停止，不用强制覆盖消除用户修改。
+Step5使用 `render-review.mjs`程序生成审阅稿；用户编辑后运行 `--pull` 回写JSON、递增版本、重置审批并重评。审阅稿不能替代完整JSON，后续制作只读JSON。冲突未解决时停止，不用强制覆盖消除用户修改。
 
 Step7使用 `init-project.mjs`复制模板及 `export-plan.mjs`导出完整scenes与注册。运行文件保留planVersion/reviewedVersion、配置及每镜全部表达字段；不要只导出narration/subtitle。
 
