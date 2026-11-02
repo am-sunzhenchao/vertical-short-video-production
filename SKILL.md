@@ -5,7 +5,7 @@ description: Use when producing a Chinese vertical (1080×1920) narrated short v
 
 # 竖版中文短视频制作
 
-> 详细视觉规范见 `visual-system.md`，代码模板见 `code-templates.md`
+> 详细视觉规范见 `references/visual-system.md`（风格选择），颜色见 `references/color-palette.md`（默认色板 `paper`），**字体角色、字号与字幕条规则见 `references/short-video-typography.md`**，代码模板见 `references/code-templates.md`
 
 ---
 
@@ -64,9 +64,9 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - 平台：微信视频号 + 抖音
 - 视频：1080×1920，25fps；封面：1080×1440
 - 栈：Remotion 4.x + ChatTTS / edge-tts + @resvg/resvg-js
-- **视觉风格模式**：`tech-mint`（默认·深空薄荷）/ `kurzgesagt`（扁平矢量科普）/ `vox`（图表驱动解释）/ `vox-light`（图表驱动·清爽浅底）/ `doodle-note`（手绘读书笔记），Step2 按**决策树**锁定，详见 visual-system.md
-- TTS 引擎：ChatTTS（默认）或 Edge-TTS（通过 `TTS_ENGINE` 环境变量切换）
-- 默认配音：**强制 `gentle_female`（温和女声），不再判断/询问其它音色** / Edge-TTS `zh-CN-YunxiNeural`（云希，男声）
+- **视觉风格模式**：`kurzgesagt`（默认.扁平矢量科普）/ `tech-mint`（·深空薄荷）/ `vox`（图表驱动解释）/ `vox-light`（图表驱动·清爽浅底）/ `doodle-note`（手绘读书笔记），Step2 按**决策树**锁定，详见 references/visual-system.md
+- TTS 引擎：ChatTTS
+- 默认配音： `gentle_female`
 
 ## 交付物清单
 
@@ -88,25 +88,24 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 ### Step 1 · 素材盘点（只读）
 
-- [ ] ls 列出所有图片/视频/文档，逐一阅读
+- [ ] ls 列出所有图片/视频/文档，逐一阅读,对于图片/视频，只需要理解文件名的含义即可，不需要读取文件内容
 - [ ] **原始素材落盘 `source.md`**（用户粘贴的文本也要落盘，作为 Step2 压缩比统计与忠实度核对的基准）
 - [ ] 输出《素材盘点》：已有素材列表 + 缺口 + 核心论点
 
 ### Step 2 · 草稿生成 + 评测优化闭环 + Review（强制卡点）
 
-- [ ] **按 visual-system.md「风格选择决策树」四问判定 `styleMode`**，把逐问结论写进样式确认表（操作者已给参考片则风格由参考片决定，只判定可行性）
+- [ ] **按 references/visual-system.md「风格选择决策树」四问判定 `styleMode`**，把逐问结论写进样式确认表（操作者已给参考片则风格由参考片决定，只判定可行性）
 - [ ] 写全片逐句旁白，切 N 个 scene，每 scene 标注 Effect/配图/纯文字
 - [ ] **旁白与字幕一律纯中文**，不产出中英对照（除操作者明确要求双语）
-- [ ] **草稿须覆盖 HKRR 四要素**（见下表），缺项须在草稿中注明补充方案
+- [ ] **草稿须覆盖 HKRR 四要素中至少2个**（见下表），缺项须在草稿中注明补充方案
 - [ ] **以 markdown 呈现草稿**
 - [ ] **草稿内容要尽量完整，保证内容正确、内容连贯、逻辑清晰**
 - [ ] **过「三条改编硬规则」**（见下方）：扩写上限 / 禁概览+细讲 / 钩子数量自检。任一不过，先改到过，再评测
 - [ ] 草稿写完后立即执行「7维度量化评测」（见下方），按评测结果自动优化迭代
-- [ ] **执行「文稿压缩比统计」**（见下方），产出压缩比读数 + 精简内容归纳 + 核心论点保留清单 + 语速核对（压缩比只报数、不设阈值）
 - [ ] **执行「衔接连贯性检查」**（见下方），逐相邻镜核对叙事过渡与画面延续，缺过渡处补过渡镜
 - [ ] 评测通过（总分≥8且核心维度1-5无≤5）后，呈现最终草稿 + 评测表 + 优化摘要 + **样式确认表**，**停下来等 review**
 - [ ] **草稿落盘**：将最终草稿（含场景表、样式确认表、评测结果、**文稿压缩比统计**、**衔接连贯性检查表**）写入项目目录下 `draft-review.md` 文件，方便用户直接在文件中修改草稿和样式，减少交互轮次
-- [ ] 用户修改完成后，**必须重新 read `draft-review.md` 文件**以获取最新草稿，再进入 Step 3。**禁止依赖会话上下文中的草稿记忆**——用户随时可能直接改文件，上下文里的版本随时过期。进入 Step3/4/5 任何一步前，先跑 `node scripts/check-draft-sync.mjs`（模板见 code-templates.md §20），不一致则同步后再继续
+- [ ] 用户修改完成后，**必须重新 read `draft-review.md` 文件**以获取最新草稿，再进入 Step 3。**禁止依赖会话上下文中的草稿记忆**——用户随时可能直接改文件，上下文里的版本随时过期。进入 Step3/4/5 任何一步前，先跑 `node scripts/check-draft-sync.mjs`（模板见 references/code-templates.md §20），不一致则同步后再继续
 - [ ] 3轮迭代仍未通过时，呈现最优版本 + 剩余问题清单，让用户决定是否继续
 - [ ] 操作者明确说"通过/OK/开始"前，**不写一行代码**
 - [ ] **样式确认表须与草稿一起呈现**，不得在草稿通过后才单独询问
@@ -120,7 +119,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 | **R · Resonance** 共鸣 | 情绪共情、经历共鸣、价值观认同 | 有无普通人代入感？有无"说出了我的心声"的场景？ |
 | **R · Rhythm** 节奏 | 开篇抓眼、无废话、快慢剪辑、情绪卡点 | 前3秒是否直击痛点？每15秒是否有一个小看点？结尾有无情感升华卡点？ |
 
-**HKRR 评分原则**：四要素都强 = 爆款潜力最大（参考何同学《5G 真实速度》、影视飓风《粉丝卫星》）；至少覆盖 2 项才具备传播基础。
+**HKRR 评分原则**：四要素都强 = 爆款潜力最大；至少覆盖 2 项才具备传播基础。
 
 #### 7维度量化评测（草稿生成后必须执行）
 
@@ -197,41 +196,6 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 > **放行条件**：所有 ❌ 项都必须有处理结论（补过渡镜 / 改画面承接 / 改首句），不允许留"已知跳变但不处理"。
 > 过渡镜属于**结构必需件**，不受时长与压缩比影响，不得为了缩短片长删掉。
 
-#### 文稿压缩比统计（草稿落盘前必须执行）
-
-把「原始素材」压成「口播讲解稿」，压缩比是**参考性观察指标**，用来看清改编幅度：偏高说明书面语残留多（读起来可能拗口），偏低说明改动大（要重点核对论点有没有丢）。用 `scripts/script-stats.mjs`（见 code-templates.md）计算，禁止手工口算字数（易错）。
-
-> **压缩比不设上下限，不作为门禁**。唯一的硬门禁是「核心论点保留清单」——只要论点无丢失，压缩比高低都放行。内容完整性优先于篇幅控制。
-
-**计算口径**（统一用汉字数，标点/空白不计入主指标）
-
-| 指标 | 定义 |
-|---|---|
-| 原始文稿字数 `R` | `source.md` 中的汉字数（正则 `[\u4e00-\u9fff]`），剔除 markdown 标记与引用行 |
-| 讲解文稿字数 `N` | 各 scene `narration` 拼接后的汉字数 |
-| 压缩比 | `N / R` |
-| 精简字数 | `R − N` |
-| 全片语速 | `N / 总时长(秒)` |
-| 每镜语速 | 各 scene `narration汉字数 / durationSec` |
-
-**压缩比读数（只报数，不判定通过与否）**
-
-| 压缩比 | 读数含义 | 建议动作（非门禁） |
-|---|---|---|
-| 偏高（书面语多） | 接近照读原文 | 按下方 6 类扫一遍，把从句/连接词改成口语句式；**不要为了降压缩比删论点** |
-| 居中 | 常规改编 | — |
-| 偏低（改动大） | 大量收敛与合并 | 逐条核对「核心论点保留清单」，确认无遗漏 |
-| >100%（口播扩写） | 讲解稿比原文更长 | 合法情形：逐条展开原文要点、补过渡镜、补理由说明；只需确认没有注水复述 |
-
-**语速参考区间**（对应7维度评测的 P1 信息过载检查；只约束"每秒信息量"，**不约束总时长**）
-
-| 字/秒 | 字/分 | 判定 |
-|---|---|---|
-| < 3.0 | < 180 | ⚠️ 拖沓，考虑拆句或合镜 |
-| 3.0 ~ 4.5 | 180 ~ 270 | ✅ 健康 |
-| 4.5 ~ 5.8 | 270 ~ 350 | ⚠️ 偏快，长镜需拆句 |
-| > 5.8 | > 350 | ❌ 语速门禁，必须放慢（拆句，不是删论点） |
-
 > **总时长不设上限**：镜数与总时长由内容完整性决定。长知识向题材做到 5~10 分钟也合法，不得为了压时长删减论点或砍过渡镜。
 
 > **关键副产物 · 决定字幕对齐方案**：统计每镜语速的极差 `max − min`。
@@ -255,22 +219,6 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 **输出格式（写入 draft-review.md）**
 
 ```
-## 文稿压缩比统计
-
-| | 汉字数 | 有效字符（含标点） |
-|---|---|---|
-| 原始文稿 | R | — |
-| 讲解文稿 | N | — |
-
-- **压缩比：XX.X%**（仅读数，不作门禁；解释一句改编幅度）
-- **精简 XXX 字（XX.X%）**
-
-### 精简掉的是什么
-
-| 类型 | 例子 | 字数量级 |
-|---|---|---|
-| 重复表述 | … | ~XX |
-| …（6 类逐条，无该类则写「无」） | | |
 
 ### 核心论点保留清单
 
@@ -329,10 +277,10 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 ## 样式确认
 
 ### 视觉风格模式（styleMode，全片统一，先选这个）
-- [ ] `tech-mint`·深空薄荷（默认，星空+薄荷绿，适合 AI/技术/工程题材）
-- [ ] `kurzgesagt`·扁平矢量科普（纯色块+高饱和撞色+一镜一概念，适合科普/原理/抽象概念）
-- [ ] `vox`·图表驱动解释（口播驱动+图表即主体+标注线圈红，适合分析/观点/数据/复盘）
+- [ ] `kurzgesagt`·扁平矢量科普（默认，纯色块+高饱和撞色+一镜一概念，适合科普/原理/抽象概念）
 - [ ] `vox-light`·图表驱动解释·浅底变体（同 `vox` 叙事，换清爽浅底色板，适合微信视频号白色信息流）
+- [ ] `tech-mint`·深空薄荷（适合 AI/技术/工程题材）
+- [ ] `vox`·图表驱动解释（口播驱动+图表即主体+标注线圈红，适合分析/观点/数据/复盘）
 - [ ] `doodle-note`·手绘读书笔记（浅纸底+纯黑单线+逐笔绘制+常驻栏目标题，适合读书解说/成长/价值观）
 
 **决策树判定留痕（必填，四问逐条给结论）**
@@ -344,36 +292,20 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 | ③ | 技术感还是人味 | | |
 | ④ | 素材形态 / 一致性风险 | | |
 
-> 详见 visual-system.md「风格选择决策树」。不回复默认 tech-mint。
+> 详见 references/visual-system.md「风格选择决策树」。不回复默认 tech-mint。
 > 操作者已给参考片 → 风格由参考片决定，跳过①~③，只填④可行性判定。
 > 选 kurzgesagt/vox/doodle-note 时，全片禁用 StarfieldDrift/渐变/粒子，避免 AI slop。
 
-### 背景色方案（Effect 底色，仅 tech-mint 模式生效）
-- [ ] 方案一·深海蓝黑 `#0d0d1a → #1a1a3a`（默认，稳重科技感）
-- [ ] 方案二·深紫星云 `#0e0618 → #1d0a35`（神秘感强）
-- [ ] 方案三·墨绿深夜 `#050f0a → #0a1f14`（自然质感）
-- [ ] 方案四·暖棕烛光 `#120a04 → #1f1008`（温暖故事感）
-> 不回复默认方案一
 
-### 浅底背景色方案（选 `vox-light` / 浅底模式时改用此组，纯色实底无渐变）
-- [ ] 浅一·清爽薄荷 底 `#F4F8F7` + 白卡 `#FFFFFF` + 描边 `#C9D8D3` + 翠绿 `#0F9D78` + 深墨绿字 `#17312B`（默认，技术科普/AI，微信视频号最清爽）
-- [ ] 浅二·暖米纸 底 `#F7F4EE` + 赭黄 `#C8872B` + 深褐字 `#2C2418`（人文/阅读/成长）
-- [ ] 浅三·冷调石灰 底 `#F2F4F7` + 蓝 `#2F6FE0` + 深灰字 `#1B2430`（商业/数据/分析）
-> 浅底模式下三件事必须同步改：① 字幕改深色 + 浅色 textShadow；② 整片渐隐遮罩与底色同色（**不得用黑色**，否则片尾压黑）；③ 禁用一切发光滤镜，层级靠描边 + 白卡 + 字重。详见 visual-system.md「`vox-light`」。
 
-### 语音风格（已锁定，不询问、不判断）
-| 项目 | 取值 | 说明 |
-|------|------|------|
-| 全局音色 | **`gentle_female`（强制默认）** | 所有项目一律用 `gentle_female`，不在样式确认表中作为选项询问，不自行判断切换其它音色 |
-| 是否 per-scene 不同风格 | 否 | 全片统一 `gentle_female` |
-
-> **音色规则（强约束）**：默认且唯一使用 `gentle_female`。即使题材偏科普/技术，也不得自行改用 `06_kepu_male_seed333` 等 Demo 音色——除非操作者在对话中明确指定其它音色。scenes.json 中每个 scene 的 `ttsStyle` 一律填 `gentle_female`（或留空走默认）。Demo 音色库仅作"操作者点名时"的备选清单，不再是自动选型依据。
+### 语音风格
+全片统一 `gentle_female` 
 
 ### 字幕样式
 | 项目 | 当前默认 | 是否修改 |
 |------|---------|---------|
 | 语言 | **纯中文单语**（不做中英对照） | |
-| 字号 | 70px（`doodle-note` 浅底模式用 64px 深色字） | |
+| 字号 | 70px（`doodle-note` 浅底模式用 64px 深色字），见 references/short-video-typography.md §4 | |
 | 颜色 | #e8fff3（浅薄荷白）；`doodle-note` 用 #1a1a1a | |
 | 动效 | 逐行串行淡入淡出 | |
 > 不回复保持默认。**双语字幕不是默认能力**，需要操作者明确提出才做（双行行组会顶掉"任何时刻只有一行"的门禁，须同步放宽）。
@@ -413,7 +345,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
   - 若全局浏览器不存在，先提示操作者安装/复制，不得直接触发项目级下载
   - 已有项目不主动修改；本规则只作用于本 Skill 后续创建的新 Remotion 项目
   - Remotion 升级后若提示浏览器版本不兼容，才更新全局文件；不要删除项目 `node_modules` 后重新下载一份
-- [ ] 复制 code-templates.md 的模板：remotion.config.ts、StarfieldDrift、Scene.tsx、index.tsx、effects 骨架
+- [ ] 复制 references/code-templates.md 的模板：remotion.config.ts、StarfieldDrift、Scene.tsx、index.tsx、effects 骨架
 - [ ] 生成 scenes.json（含顶层 `styleMode`、每镜 `shot_type`、narration、subtitleSegments）
 - [ ] **底色按 styleMode**：`tech-mint` → Effect 用所选背景色方案渐变（不用实色/transparent 走星空）；`kurzgesagt` → 单一深色块纯底、无渐变无星空；`vox` → 近黑纯底、图表铺满；`vox-light` → 所选浅底方案纯色实底（默认 `#F4F8F7`），色板集中到 `src/effects/palette.ts`，字幕转深色、渐隐遮罩同底色、禁用发光
 - [ ] **画面兑现检查（强制卡点·纯代码审查）**：逐 scene 对照 subtitle，把其中的**可视化素材**落到 Effect 画面上，不得只显示标题。**通过阅读 Effect 代码核对，不通过渲染关键帧验证**
@@ -460,65 +392,12 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
   node scripts/sync-durations.mjs
   ```
   > ChatTTS `InferCodeParams` 不支持 `speed` 参数，语速调整只能走 ffmpeg `atempo`（建议 0.85~0.95，超出范围音质明显损失）。
-- [ ] **单场景重新生成**（旁白修改后）：全量重跑浪费时间，用 `scripts/tts-single.mjs` 只重新生成指定 scene（模板见 code-templates.md §21）：
+- [ ] **单场景重新生成**（旁白修改后）：全量重跑浪费时间，用 `scripts/tts-single.mjs` 只重新生成指定 scene（模板见 references/code-templates.md §21）：
   ```bash
   node scripts/tts-single.mjs --scene S03   # 生成 + 归一化 + sync-durations 一步完成
   ```
   > ⚠️ `chattts_batch.py` 内部执行 `os.chdir(CHATTS_ROOT)`，output 路径**必须是绝对路径**（用 `os.path.abspath()`），否则文件写到 ChatTTS 目录而非项目目录，难以排查。`tts-single.mjs` 模板已内置此处理。
   ```
-
-#### ChatTTS 可用风格（`/Users/sunzhenchao/ChatTTS/speakers/` 已保存 embedding）
-
-**用法**：在 `scenes.json` 每个 scene 里设 `"ttsStyle": "<key>"`，或 `CHATTTS_STYLE=<key> node scripts/tts.mjs` 全局切换。
-
-##### 通用命名风格（泛用，无固定音色倾向）
-
-| ttsStyle | 说明 | 适用场景 |
-|---|---|---|
-| `calm_male` | 沉稳男声，低温度 | 知识科普、深度解析 |
-| `energetic_male` | 活力男声，高温度 | 开场钩子、热点评论 |
-| `gentle_female` | 温和女声（**全局默认**） | 叙事解读、情感共鸣 |
-| `gentle_male` | 温和男声 | 轻松讲解 |
-| `deep_voice` | 磁性低音 | 严肃话题、结论升华 |
-| `deep_male` | 磁性低音男声 | 行业分析 |
-| `natural_conversational` | 自然对话 | 口播互动 |
-| `jsfx_female` | 技术分享女声，有 refine | 技术/工程/AI 题材 |
-
-##### Demo 音色库（固定音色 + 固定参数，可完全复现）
-
-> ⚠️ 这是**备选清单**，不是默认来源。默认音色锁定 `gentle_female`（见上方"语音风格"强约束），只有操作者明确点名下表某个 `ttsStyle` 时才使用。
-
-> 命名规则：`{风格编号}_{风格}_{性别}_seed{N}`，speaker 文件已同步至 `/Users/sunzhenchao/ChatTTS/speakers/`。  
-> 参考试听：`/Users/sunzhenchao/Desktop/工作文档/self/素材/chattts/audios/{ttsStyle}.mp3`
-
-| ttsStyle | 性别 | 音色特征 | 风格 | speed | refine | 适用场景 |
-|---|---|---|---|---|---|---|
-| `01_dushu_female_seed999` | 女 | 青年女声 | 读书朗读 | 3 | ✗ | 有声书、书评 |
-| `01_dushu_male_seed55` | 男 | 清亮少年感 | 读书朗读 | 3 | ✗ | 有声书、读书笔记 |
-| `02_sanwen_female_seed44` | 女 | 青年厚声 | 散文朗读 | 2 | ✗ | 散文、诗歌、情感 |
-| `02_sanwen_male_seed666` | 男 | 青年成熟厚声 | 散文朗读 | 2 | ✗ | 散文、情感类 |
-| `03_jsfx_female_seed88` | 女 | 青年成熟女声 | 技术分享 | 5 | ✓ oral_4 | 技术口播、知识分享 |
-| `03_jsfx_male_seed99` | 男 | 青年厚声 | 技术分享 | 5 | ✓ oral_4 | 技术口播 |
-| `04_jsjs_female_seed44` | 女 | 青年厚声 | 技术介绍 | 5 | ✗ | 产品/工具介绍 |
-| `04_jsjs_male_seed222` | 男 | 青年成熟厚声 | 技术介绍 | 5 | ✗ | 技术介绍（备选，仅操作者点名时用） |
-| `05_fengjing_female_seed777` | 女 | 青年成熟厚声 | 风景介绍 | 3 | ✗ | 旅游、风景、人文 |
-| `05_fengjing_male_seed888` | 男 | 清亮少年感 | 风景介绍 | 3 | ✗ | 旅游类 |
-| `06_kepu_female_seed555` | 女 | 青年成熟厚声 | 科普讲解 | 6 | ✓ oral_2 | 科普、原理解析 |
-| `06_kepu_male_seed333` | 男 | 青年成熟厚声 | 科普讲解 | 6 | ✓ oral_2 | 科普、深度解读 |
-| `07_gaoxiao_female_seed88` | 女 | 青年成熟女声 | 搞笑吐槽 | 7 | ✓ oral_6 laugh_1 | 搞笑、吐槽、热点评论 |
-| `07_gaoxiao_male_seed77` | 男 | 清亮厚声 | 搞笑吐槽 | 7 | ✓ oral_6 laugh_1 | 搞笑类 |
-| `08_yingshi_female_seed3005` | 女 | 中年厚声 | 影视解说 | 7 | ✓ oral_3 | 影视解说、剧情讲解 |
-| `08_yingshi_male_seed3015` | 男 | 青年成熟厚声 | 影视解说 | 7 | ✓ oral_3 | 影视解说 |
-| `09_qinggan_female_seed3003` | 女 | 中年厚声 | 情感语录 | 2 | ✗ | 情感共鸣、心理、成长 |
-| `09_qinggan_male_seed3001` | 男 | 青年成熟 | 情感语录 | 2 | ✗ | 情感类 |
-| `10_xuanyi_female_seed3016` | 女 | 中年厚声 | 悬疑怪谈 | 3 | ✗ | 悬疑、恐怖、猎奇 |
-| `10_xuanyi_male_seed3008` | 男 | 中年低沉 | 悬疑怪谈 | 3 | ✗ | 悬疑、怪谈 |
-| `11_daihuo_female_seed3011` | 女 | 青年女声 | 带货口播 | 9 | ✓ oral_5 | 带货、促销、快节奏 |
-| `11_daihuo_male_seed3002` | 男 | 青年厚声 | 带货口播 | 9 | ✓ oral_5 | 带货类 |
-| `12_ertong_female_seed3009` | 女 | 中年厚声 | 儿童故事 | 4 | ✓ oral_4 laugh_1 | 儿童故事、亲子 |
-| `12_ertong_male_seed3007` | 男 | 青年厚声 | 儿童故事 | 4 | ✓ oral_4 laugh_1 | 儿童故事 |
-| `13_asmr_female_seed3010` | 女 | 青年成熟女声 | ASMR 助眠 | 1 | ✗ | 助眠、冥想、极慢速 |
-| `13_asmr_male_seed3012` | 男 | 青年成熟厚声 | ASMR 助眠 | 1 | ✗ | 助眠类 |
 
 #### ⚠️ ChatTTS 常见问题
 
@@ -556,7 +435,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 ### Step 6 · 发布物
 
-- [ ] V1+V2 封面：问句 + 格式化核心内容，V2 背景与视频首帧一致
+- [ ] V1+V2 封面：问句 + 格式化核心内容，V2 背景与视频首帧一致，只生成svg文件，不生产png
 - [ ] 标题.txt（问句≤16字符）+ 描述.txt（≤1000字符，结尾#标签）
 
 ---
@@ -581,7 +460,6 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - ❌ 跳过 Step1/2 直接写代码
 - ❌ Step1 未把原始素材落盘 `source.md`（后续压缩比统计与忠实度核对无基准）
 - ❌ 未经7维度评测闭环直接呈现草稿（须总分≥8且维度1-5无≤5）
-- ❌ `draft-review.md` 缺「文稿压缩比统计」——压缩比读数 / 精简内容 6 类归纳 / 核心论点保留清单 / 语速核对，**四项缺一不可**
 - ❌ `draft-review.md` 缺「衔接连贯性检查表」（相邻镜逐对核对，缺过渡处必须给处理结论）
 - ❌ 为压时长/降压缩比而删论点、砍过渡镜（内容完整性优先，压缩比与总时长都不是门禁）
 - ❌ 核心论点保留清单出现 ❌ 丢失项仍放行
@@ -591,7 +469,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - ❌ 复制其他项目的 `node_modules`（native binding 按机器架构解析，跨项目复制必缺平台二进制；一律 `npm install`，装完用 `npx tsc --noEmit` 做编译烟雾测试）
 - ❌ 新项目让 Remotion 自动下载项目级 Chrome Headless Shell 到 `node_modules/.remotion`——必须通过 `Config.setBrowserExecutable()` 复用 `~/.remotion/chrome-headless-shell/` 中的全局浏览器；全局文件缺失时先提示安装，不得静默重复下载
 - ❌ 未经用户确认 styleMode 直接按默认 tech-mint 写代码（样式确认表必须含 styleMode 选择项）
-- ❌ 凭美学/直觉选 styleMode——必须走 visual-system.md「风格选择决策树」，并在样式确认表填四问判定留痕
+- ❌ 凭美学/直觉选 styleMode——必须走 references/visual-system.md「风格选择决策树」，并在样式确认表填四问判定留痕
 - ❌ 草稿里产出中英对照字幕（默认纯中文；操作者明确要求双语才做）
 - ❌ 未经操作者授意自动渲染 mp4
 - ❌ 以「验证编译」为由运行 `remotion still`——编译验证只用 `npx tsc --noEmit`；`remotion still` 会在 `out/` 目录堆积无用 PNG，且属于被禁止的视觉自检行为
@@ -602,16 +480,12 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 **视觉/风格/底色**
 - ❌ 视频底部进度条；顶部 eyebrow / 底部品牌带
 - ❌ 英文 chip/pill 短标（如 `[BUG]`）
-- ❌ `tech-mint` 下 Effect AbsoluteFill 实色背景（遮住 StarfieldDrift）；`kurzgesagt`/`vox` 则相反，必须纯色块底
-- ❌ `kurzgesagt`/`vox` 模式仍挂 StarfieldDrift / 用渐变底 / 加漂浮粒子（退化成 AI slop）
-- ❌ `kurzgesagt` 一镜堆多概念（每镜只讲一件事、只放一个核心图形）
-- ❌ `vox` 无论证结构（须「抛问题→给背景→层层推进→落判断」，标注跟随口播逐帧点亮）
 - ❌ scenes.json 缺 `styleMode`（顶层）或 `shot_type`（每镜）字段——Step3 无法路由
-- ❌ 生图（`flat`/`atmosphere`）提示词不带 AI slop 负向串（定义见 visual-system.md）
+- ❌ 生图（`flat`/`atmosphere`）提示词不带 AI slop 负向串（定义见 references/visual-system.md）
 - ❌ 用生图模型画数据图表/信息图（数字必糊）——有字有数走 designai-infographic-image 或 Remotion 精绘
 - ❌ Effect 内时间用百分比（用绝对帧数）
 - ❌ Effect 内 3D rotateY 翻页（竖屏变形）
-- ❌ Effect 字号过小（说明≥40px，标题≥80px，Badge≥28px）
+- ❌ Effect 字号过小（说明文字≥40px，中文标题≥80px，Badge≥26px；完整角色字号见 references/short-video-typography.md）
 - ❌ Effect 内容元素 `top` 值小于 150px——顶部 0–150px 为平台留白区，内容从 `top: 150` 起；背景装饰层（全幅散点/粒子/纹理，无文字无图形）不受此限制
 - ❌ Effect 内短标签/短词（版本号、语言名、卡片标题、Badge）未加 `whiteSpace: "nowrap"` 导致换行
 - ❌ 配图 objectFit: cover（用 contain）
@@ -639,13 +513,8 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - ❌ 字幕分片末尾保留标点（，,。；;、等）——标点仅用于切割，展示时去掉分片末尾标点
 
 **音频/TTS**
-- ❌ 默认女声 Xiaoxiao（默认 ChatTTS gentle_female / Edge-TTS YunxiNeural 男声）
-- ❌ 自行判断题材后改用 `gentle_female` 以外的音色（如科普题材擅自换 `06_kepu_male_seed333`）——音色锁定 `gentle_female`，仅当操作者明确点名时才换
-- ❌ 把"全局音色"当作样式确认表的可选项去询问操作者（已锁定，不询问）
-- ❌ TTS 文本含英文术语、数字字母混排、英文专有名词——以下三类 ChatTTS 均不稳定，轻则读错，重则吞字，**一律替换为中文**：
-  - ① 纯英文术语（`MySQL` / `config.json` / `safetensors`）→ 同义中文词或直接删除
-  - ② 数字+单位混排（`36G` / `1.56T` / `31M` / `99.9%` / `BF16`）→ 汉字读音（三十六G / 一点五六T / 三十一M / 百分之九十九）
-  - ③ 英文专有名词（`Kimi K3` / `Windows`）→ 音译或括注；若无法音译，在旁白中避开，仅保留在 subtitle 中显示
+- ❌ TTS 文本含数字字母混排—— ChatTTS 均不稳定，轻则读错，重则吞字，**一律替换为中文**：
+  - 数字+单位混排（`36G` / `1.56T` / `31M` / `99.9%` / `BF16`）→ 汉字读音（三十六G / 一点五六T / 三十一M / 百分之九十九）
 - ❌ narration 与 subtitle 内容不一致（仅允许发音替换）
 - ❌ ChatTTS 用 CLI 模式（`chattts_cli.py`）批量生成——重复加载模型必超时，必须用 `chattts_batch.py`
 - ❌ Node.js 调用 Python 时未设 `PYTHONPATH: "/Users/sunzhenchao/ChatTTS"`（否则 ModuleNotFoundError）
@@ -707,7 +576,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 | `designai-process-map` | process | 输出 mermaid → 图，默认 flowchart TD |
 | `script-visual-breakdown` | S2→S3 拆解 | 输入人物小传+剧本，输出多图参考结构化表格 |
 
-> `vox` 图表禁止用生图模型画（数字必糊），走 infographic 或 Remotion 精绘。AI slop 负向串定义见 visual-system.md「AI slop 红线」。
+> `vox` 图表禁止用生图模型画（数字必糊），走 infographic 或 Remotion 精绘。AI slop 负向串定义见 references/visual-system.md「AI slop 红线」。
 
 ### 场景表达手法（按 scene 语义）
 
