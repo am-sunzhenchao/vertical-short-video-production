@@ -18,8 +18,9 @@
 ```
 vertical-short-video-production/
 ├── SKILL.md              # 主流程（Step1–6）+ 否定项约束
-├── visual-system.md      # 视觉规范：版面安全区、风格决策树、Effect 规范
-├── code-templates.md     # 可复制代码模板（Effects、scenes.json、脚本等）
+├── references/           # 参考文档（按需加载，不进主上下文）
+│   ├── visual-system.md  # 视觉规范：版面安全区、风格决策树、Effect 规范
+│   └── code-templates.md # 可复制代码模板（Effects、scenes.json、脚本等）
 ├── chattts/
 │   ├── chattts_batch.py  # ChatTTS 批处理脚本（模型只加载一次）
 │   ├── config.json       # ChatTTS 本地安装路径配置
@@ -76,7 +77,7 @@ Step 6  封面 + 发布文案  V1+V2 封面 SVG/PNG，标题.txt，描述.txt
 ## 关键约束（高频违规项）
 
 - **顶部留白**：Effect 内容元素 `top ≥ 150px`，背景装饰层不限
-- **TTS 中文化**：narration 不得含英文字母数字混排（`36G` → `三十六G`）
+- **正文与朗读**：保留英文术语、命令、数字和版本号原文；`subtitle` 为正文，`narration` 仅在用户确认需要不同读法时提供，相同则省略；分段同样使用 `text` + 可选 `narration`
 - **编译验证**：用 `npx tsc --noEmit`，禁止用 `remotion still`（污染 `out/` 目录）
 - **Outro 三件套**：OutroRecap scene + tailSec 静场 + 整片渐隐，缺一不可
 - **容器 opacity**：背景色块与子内容共用同一 opacity 变量，不得容器先于内容出现
@@ -114,11 +115,8 @@ npx tsc --noEmit
 
 ## 更新记录
 
-| 日期 | 变更 |
+| 日期 | 变更|
 |------|------|
-| 2026-09-05 | 新增 `tts-single.mjs` 单场景重生成工作流 |
-| 2026-09-05 | TTS 中文化范围扩展至数字+单位+专有名词 |
-| 2026-09-05 | 顶部留白约束从 120px 调整为 150px |
-| 2026-09-05 | 新增「容器与内容共用 opacity」动画规范 |
-| 2026-09-05 | 编译验证改为 `npx tsc --noEmit`，禁止 `remotion still` |
-| 2026-09-05 | 开场 S01 音频强制 atempo=0.9 降速约束 |
+| 2026-10 | 统一镜头色板及字体    ，封面 SVG 经 Review 确认后再转 PNG   |
+| 2026-09 | 新增 `tts-single.mjs` 单场景重生成；TTS 中文化扩展至数字、单位及专有名词；顶部留白由 120px 调整为 150px，容器与内容共用 opacity；编译验证改为 `npx tsc --noEmit`，开场 S01 音频强制 `atempo=0.9` 降速；锁定默认音色为 `gentle_female`，补充相关约束与脚本 |
+| 2026-08 | 初始创建竖版中文短视频制作 Skill 文档体系；新增 ChatTTS 批量合成集成，模型只加载一次；Effect 文件名规范改为 sceneId 前置（`{sceneId}-{EffectName}.tsx`）                                                                                                  |

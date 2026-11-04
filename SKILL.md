@@ -5,7 +5,12 @@ description: Use when producing a Chinese vertical (1080×1920) narrated short v
 
 # 竖版中文短视频制作
 
-> 详细视觉规范见 `references/visual-system.md`（风格选择），颜色见 `references/color-palette.md`（默认色板 `paper`），**字体角色、字号与字幕条规则见 `references/short-video-typography.md`**，代码模板见 `references/code-templates.md`
+> **参考文件按阶段读取，不要提前全量加载**：
+> - Step2 定风格 → `references/visual-system.md`（风格选择 / 决策树 / 版面 / 字幕结构）
+> - Step2 定色板、Step4 上色 → `references/color-palette.md`（色值 / 各模式专属色板 / 默认色板 `paper`）
+> - Step2 逐镜选 Effect、Step3 路由 → `references/effect-selection.md`（7 类组件 / 决策树 / 三型规则）
+> - Step4 写字幕与画面文字 → `references/short-video-typography.md`（字体角色 / 字号 / 字幕条规则）
+> - **Step4 写 Remotion 代码时才读** `references/code-templates.md`（46KB，早期阶段勿加载）
 
 ---
 
@@ -89,15 +94,14 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 ### Step 1 · 素材盘点（只读）
 
 - [ ] ls 列出所有图片/视频/文档，逐一阅读,对于图片/视频，只需要理解文件名的含义即可，不需要读取文件内容
-- [ ] **原始素材落盘 `source.md`**（用户粘贴的文本也要落盘，作为 Step2 压缩比统计与忠实度核对的基准）
+- [ ] **如果提供的是链接、用户粘贴的文本，需要落盘 `source.md`**，如果提供的是本机的文件名，则不需要落盘（作为 Step2 压缩比统计与忠实度核对的基准）
 - [ ] 输出《素材盘点》：已有素材列表 + 缺口 + 核心论点
 
 ### Step 2 · 草稿生成 + 评测优化闭环 + Review（强制卡点）
 
 - [ ] **按 references/visual-system.md「风格选择决策树」四问判定 `styleMode`**，把逐问结论写进样式确认表（操作者已给参考片则风格由参考片决定，只判定可行性）
-- [ ] 写全片逐句旁白，切 N 个 scene，每 scene 标注 Effect/配图/纯文字
-- [ ] **旁白与字幕一律纯中文**，不产出中英对照（除操作者明确要求双语）
-- [ ] **草稿须覆盖 HKRR 四要素中至少2个**（见下表），缺项须在草稿中注明补充方案
+- [ ] 写全片逐句旁白，切 N 个 scene；每 scene 标注 `shot_type`，走 `effect` 的镜按 references/effect-selection.md §3 决策树选定 `effectName`
+- [ ] **旁白与字幕以中文叙述为主，保留英文术语、命令、文件名、数字和版本号原文，不默认翻译、音译或改写**；英文术语混排不等于双语字幕，不产出中英对照（除操作者明确要求双语）
 - [ ] **以 markdown 呈现草稿**
 - [ ] **草稿内容要尽量完整，保证内容正确、内容连贯、逻辑清晰**
 - [ ] **过「三条改编硬规则」**（见下方）：扩写上限 / 禁概览+细讲 / 钩子数量自检。任一不过，先改到过，再评测
@@ -109,17 +113,6 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - [ ] 3轮迭代仍未通过时，呈现最优版本 + 剩余问题清单，让用户决定是否继续
 - [ ] 操作者明确说"通过/OK/开始"前，**不写一行代码**
 - [ ] **样式确认表须与草稿一起呈现**，不得在草稿通过后才单独询问
-
-#### HKRR 草稿检查表
-
-| 要素 | 核心目标 | 草稿中的落点 |
-|---|---|---|
-| **H · Happiness** 快乐 | 趣味解压、猎奇搞笑、视觉爽感 | 有无爆笑反转桥段？有无视觉冲击慢镜/爆炸拆解画面？ |
-| **K · Knowledge** 知识 | 干货、避坑、科普、行业内幕 | 每个 scene 是否有明确知识点？观众学完能直接落地吗？ |
-| **R · Resonance** 共鸣 | 情绪共情、经历共鸣、价值观认同 | 有无普通人代入感？有无"说出了我的心声"的场景？ |
-| **R · Rhythm** 节奏 | 开篇抓眼、无废话、快慢剪辑、情绪卡点 | 前3秒是否直击痛点？每15秒是否有一个小看点？结尾有无情感升华卡点？ |
-
-**HKRR 评分原则**：四要素都强 = 爆款潜力最大；至少覆盖 2 项才具备传播基础。
 
 #### 7维度量化评测（草稿生成后必须执行）
 
@@ -201,7 +194,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 > **关键副产物 · 决定字幕对齐方案**：统计每镜语速的极差 `max − min`。
 > - **极差 ≤ 1.0 字/秒**（语速均匀）→ 可用「**单段 TTS + 字幕按字数比例分配时间**」，韵律自然且误差极小
 > - **极差 > 1.0 字/秒**（语速不均）→ 必须走「**多段 TTS + `startSec` 回写**」，否则字幕会漂
-> 这一判定要写进 draft-review.md，Step5 按它选路。
+> 这一判定要写进 draft-review.md，Step5 按它选路。含英文术语或数字时，汉字计数不能代表实际朗读量，须结合混排句试读时长核对语速；不能只凭汉字极差选择字幕对齐路线。
 
 **精简内容归纳（固定 6 类，逐类给例子 + 字数量级）**
 
@@ -246,7 +239,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
    - 第1-2轮：自动优化+重评
    - 第3轮仍未通过：呈现最优版本 + 剩余问题清单，让用户决定是否继续修改或接受当前版本
 4. 优化重点优先级：
-   - **P0**：情绪曲线断裂（中段无R点、连续K轰炸）
+   - **P0**：情绪曲线断裂（中段连续密集输出、无喘息点）
    - **P1**：信息过载（单场景塞入过多知识点、语速>350字/分钟）
    - **P2**：内容遗漏（素材核心论点未覆盖）
    - **P3**：节奏拖沓（可压缩的冗余段落）
@@ -304,7 +297,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 ### 字幕样式
 | 项目 | 当前默认 | 是否修改 |
 |------|---------|---------|
-| 语言 | **纯中文单语**（不做中英对照） | |
+| 语言 | **中文为主，保留英文技术术语**（不做中英对照） | |
 | 字号 | 70px（`doodle-note` 浅底模式用 64px 深色字），见 references/short-video-typography.md §4 | |
 | 颜色 | #e8fff3（浅薄荷白）；`doodle-note` 用 #1a1a1a | |
 | 动效 | 逐行串行淡入淡出 | |
@@ -316,9 +309,9 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - [ ] **开工前先跑 `node scripts/check-draft-sync.mjs`**：确认 scenes.json 与最新 `draft-review.md` 一致，不一致先同步（机械门禁，防止草稿已被用户修改而沿用旧版）
 - [ ] **每个 scene 在 scenes.json 标注 `shot_type`，Step3 按标签路由素材来源**（见下表），标签在 Step2 编剧时确定
 - [ ] 按 scene 类型决定素材来源（algorithmic-art / frontend-design / canvas-design / 手写SVG）
-- [ ] **H 要素场景**：优先用动态 Effect（爆炸、慢镜、粒子）制造视觉爽感；猎奇内容配高饱和撞色
-- [ ] **K 要素场景**：用数据可视化/对比卡片/步骤拆解 Effect，知识点要有视觉锚点
-- [ ] **R 要素场景**：色调偏暖（金色/琥珀），人物/手写/温柔光晕元素，避免冷色硬朗风格
+- [ ] **要制造视觉爽感的镜**（猎奇/反差/爆发点）：配高饱和撞色 + 节奏快切；Effect 选型走 `references/effect-selection.md §2.6`（场景与故事类），**不是**纯装饰动画
+- [ ] **有知识点要讲的镜**：画面必须有视觉锚点，Effect 选型走 `references/effect-selection.md §2.2–2.5`（结构机制 / 对比权衡 / 数据趋势 / 时间过程）
+- [ ] **情绪共鸣镜**：色调偏暖（金色/琥珀），人物/手写/温柔光晕元素，避免冷色硬朗风格
 - [ ] SVG 内 emoji 全替换成 Unicode 符号
 - [ ] 走 render-cover.mjs 输出 PNG，目检无豆腐方块；单张/任意 SVG 用 `node <skill>/scripts/svg2png.mjs <file.svg> [宽度]`（输出同名 .png，默认宽1080，可任意目录执行）
 
@@ -326,7 +319,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 | shot_type | 语义 | 素材来源（推荐 skill） | 产物 | 对应范式 |
 |---|---|---|---|---|
-| `effect` | 抽象概念/对比/枚举，用 Remotion 组件表达（默认） | 本 skill Effect 库 + code-templates | tsx 组件 | tech-mint |
+| `effect` | 抽象概念/对比/枚举，用 Remotion 组件表达（默认） | **effect-selection.md** 选型 + code-templates 实现 | tsx 组件 | tech-mint |
 | `infographic` | 讲清一组数据/结构/多项对比 | **designai-infographic-image**（9:16，理解结构，数字不糊） | PNG（首帧） | vox |
 | `chart` | 单一图表铺满屏、旁白带读 | Remotion 精绘 或 designai-infographic-image | tsx / PNG | vox |
 | `process` | 流程/步骤/关系/状态机 | **designai-process-map**（mermaid flowchart/mindmap） | PNG | kurzgesagt/vox |
@@ -346,26 +339,29 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
   - 已有项目不主动修改；本规则只作用于本 Skill 后续创建的新 Remotion 项目
   - Remotion 升级后若提示浏览器版本不兼容，才更新全局文件；不要删除项目 `node_modules` 后重新下载一份
 - [ ] 复制 references/code-templates.md 的模板：remotion.config.ts、StarfieldDrift、Scene.tsx、index.tsx、effects 骨架
-- [ ] 生成 scenes.json（含顶层 `styleMode`、每镜 `shot_type`、narration、subtitleSegments）
+- [ ] 生成 scenes.json（含顶层 `styleMode`、每镜 `shot_type`、`subtitle`；仅需要不同读法时提供可选 `narration`，仅多段对齐时提供 `subtitleSegments`）
+  - `subtitle` 为正文，字幕与朗读相同则省略 `narration`，不写空字符串或复制正文；单段 TTS 使用 `narration ?? subtitle`。
+  - `subtitleSegments` 至少包含两段，只有一段时省略并使用整镜 `narration` 处理特殊读法。`subtitleSegments[].text` 从正文切分，保留英文原词；分段 TTS 使用 `segment.narration ?? segment.text`，朗读覆盖仅保存在有差异的分段，不重复保存整镜 `narration`。字幕只显示 `text`。
+  - 统计、Effect 时间轴和单场景重生成均须支持省略 `narration`；取值规则见 references/code-templates.md §6。已有项目不主动迁移。
 - [ ] **底色按 styleMode**：`tech-mint` → Effect 用所选背景色方案渐变（不用实色/transparent 走星空）；`kurzgesagt` → 单一深色块纯底、无渐变无星空；`vox` → 近黑纯底、图表铺满；`vox-light` → 所选浅底方案纯色实底（默认 `#F4F8F7`），色板集中到 `src/effects/palette.ts`，字幕转深色、渐隐遮罩同底色、禁用发光
 - [ ] **画面兑现检查（强制卡点·纯代码审查）**：逐 scene 对照 subtitle，把其中的**可视化素材**落到 Effect 画面上，不得只显示标题。**通过阅读 Effect 代码核对，不通过渲染关键帧验证**
   - 检查方法：把 subtitle 拆成「关键名词 / 数据 / 对比 / 流程 / 枚举」5类元素，逐个确认在 Effect 里有对应视觉呈现
   - 例：subtitle 含「单线程 vs 多线程」→ 画面必须有左右对比；含「内存飙升」→ 必须有增长可视化；含「版本混乱」→ 必须有多元素散布；含「①②③④」→ 必须逐项展开
 - [ ] **编译验证用 `npx tsc --noEmit`**（每批 Effect 写完后执行一次）：只做类型检查，不产生任何输出文件，不污染 `out/` 目录
-  - **K 要素场景且 durationSec > 8s**：禁止只用「锚点型 Effect」（WallHeader 等仅标题的组件），必须配「内容型 Effect」（数据可视化/对比卡片/流程拆解）
+  - **知识场景且 durationSec > 8s**：禁止只用锚点型 Effect，必须配内容型 Effect（类型定义见 references/effect-selection.md §4）
 - [ ] **画面连贯性检查（强制卡点·纯代码审查）**：逐相邻 Effect 对照，确认三点——① 视觉锚点承接（元素/位置/强调色至少一项延续，不得每镜另起一套视觉语言）；② 入场方向与上镜出场不冲突（避免相邻镜反向滑动打架）；③ 过渡镜 Effect 必须"承上启下"（画面同时出现上镜元素的收束形态与下镜元素的雏形），不能只放一句标题
 - [ ] 字幕：固定70px，每次只显示一行（≤13视觉字符），串行逐行，三级切割（强标点→逗号→机械截断），禁 nowrap
 - [ ] **字幕分片去尾标点**：每个分片展示时，去掉末尾的标点符号（，,。.；;、！!？?：:… 等），只保留正文；标点仅用于切割断句，不参与显示
 - [ ] 标题文字：不超过16个字符，超出部分截断，加 `whiteSpace: "nowrap"`
-- [ ] **节奏（R·Rhythm）强制规则**：
+- [ ] **节奏强制规则**：
   - 前3秒 scene：必须用冲突/悬念/反转开头，禁止平铺直叙（❌"今天我们来讲…"）
   - 每15秒设一个「小看点」：新信息/反转/视觉爆发点，防跳出
-  - 快切 scene（H 类）与慢叙事 scene（K/R 类）保持节奏区分（快镜短、叙事镜长）；**单镜时长与全片总时长均不设上限**，超长镜优先拆镜而非删内容
+  - 快切 scene 与慢叙事 scene 保持节奏区分（快镜短、叙事镜长）；**单镜时长与全片总时长均不设上限**，超长镜优先拆镜而非删内容
   - 结尾倒数2个 scene：节奏放慢 + 情感升华，配合卡点配乐（durationSec ≥ 8s）
 
 ### Step 5 · 音频
 
-- [ ] **跑 TTS 前先跑 `node scripts/check-draft-sync.mjs`**：草稿可能已在用户侧二次修改，narration 不一致会导致配音与字幕错位，必须机械校验
+- [ ] **跑 TTS 前先跑 `node scripts/check-draft-sync.mjs`**：草稿可能已在用户侧二次修改，必须校验 `subtitle` 与草稿、分段 `text` 与正文一致；有朗读覆盖时另外核对含义，避免配音与字幕错位
 - [ ] **按 Step2「语速极差」判定选路**（见文稿压缩比统计）：
   - 极差 ≤ 1.0 字/秒 → **单段 TTS**（每 scene 整段一次调用，韵律自然）+ 字幕按汉字数比例分配时间
   - 极差 > 1.0 字/秒 → **多段 TTS**（按 `subtitleSegments` 逐句生成）+ ffmpeg concat + `startSec` 回写
@@ -470,7 +466,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - ❌ 新项目让 Remotion 自动下载项目级 Chrome Headless Shell 到 `node_modules/.remotion`——必须通过 `Config.setBrowserExecutable()` 复用 `~/.remotion/chrome-headless-shell/` 中的全局浏览器；全局文件缺失时先提示安装，不得静默重复下载
 - ❌ 未经用户确认 styleMode 直接按默认 tech-mint 写代码（样式确认表必须含 styleMode 选择项）
 - ❌ 凭美学/直觉选 styleMode——必须走 references/visual-system.md「风格选择决策树」，并在样式确认表填四问判定留痕
-- ❌ 草稿里产出中英对照字幕（默认纯中文；操作者明确要求双语才做）
+- ❌ 未经用户要求产出中英对照字幕（默认中文叙述可混排英文技术术语；操作者明确要求双语才做）
 - ❌ 未经操作者授意自动渲染 mp4
 - ❌ 以「验证编译」为由运行 `remotion still`——编译验证只用 `npx tsc --noEmit`；`remotion still` 会在 `out/` 目录堆积无用 PNG，且属于被禁止的视觉自检行为
 - ❌ 代码生成后主动渲染关键帧（`remotion still`）做视觉自检——画面兑现只在代码层面审查，视觉核对由操作者主动发起
@@ -493,9 +489,8 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 **Effect/画面兑现**
 - ❌ subtitle 含可视化素材（对比/数据/流程/枚举）却未在 Effect 中呈现（须逐 scene 过「画面兑现检查」）
-- ❌ 总览 scene 后分项无视觉锚点（用 WallHeader 挂顶）
-- ❌ 长知识场景（K 要素且 >8s）复用纯锚点型 Effect（WallHeader 等仅标题组件），画面信息量远低于旁白
-- ❌ 多个信息量不同的场景硬套同一锚点型 Effect 凑数（信息密度不够应新建专用内容型 Effect）
+- ❌ 总览 scene 后分项无视觉锚点（用 `WallHeaderEffect` 挂顶）
+- ❌ 长知识场景（>8s）复用纯锚点型 Effect，画面信息量远低于旁白
 - ❌ 多个 scene 共用同一 Effect 组件（每 scene 必须独立 tsx `{sceneId}-{EffectName}.tsx`）
 - ❌ Effect 文件名把 sceneId 放在后面（如 `LoopEffect-S19.tsx`）——查找键必须在最前，否则 `ls` 与编辑器模糊搜索按语义名排序，和片子时间轴无关，改某一镜要先全目录 grep 才能定位
 - ❌ 相邻 Effect 视觉语言完全另起（无元素/位置/强调色任一承接），整片像 N 张互不相干的图轮播
@@ -505,7 +500,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 **字幕**
 - ❌ 字幕单行超过13视觉字符（中文计1，英文计0.55）导致折行
 - ❌ 字幕多行堆叠（串行：旧行消失→间隙→新行出现，任何时刻只有一行）
-- ❌ 无操作者要求就加英文副行/中英对照（默认单语中文，双语会破坏单行门禁与字号体系）
+- ❌ 无操作者要求就加英文副行/中英对照（中文叙述可保留英文术语；双语副行会破坏单行门禁与字号体系）
 - ❌ 字幕 bottom < 250px（平台安全区锁定）
 - ❌ 标题超过16个字符（超出截断，加 nowrap 确保不换行）
 - ❌ splitToLines 时序溢出 segEnd（chunks 过多导致后半段字幕不显示）
@@ -513,9 +508,8 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - ❌ 字幕分片末尾保留标点（，,。；;、等）——标点仅用于切割，展示时去掉分片末尾标点
 
 **音频/TTS**
-- ❌ TTS 文本含数字字母混排—— ChatTTS 均不稳定，轻则读错，重则吞字，**一律替换为中文**：
-  - 数字+单位混排（`36G` / `1.56T` / `31M` / `99.9%` / `BF16`）→ 汉字读音（三十六G / 一点五六T / 三十一M / 百分之九十九）
-- ❌ narration 与 subtitle 内容不一致（仅允许发音替换）
+- 不默认将英文术语、命令、文件名、数字或版本号转换为中文或音译；ChatTTS 对混排文本的发音质量用实际试读判断，异常时先向用户确认特殊读法或切换引擎，不静默改稿。
+- `narration` 仅作为用户确认的发音覆盖，不改变 `subtitle` 的含义；两者相同则省略 `narration`，不写空字符串。分段同样使用 `text` 与可选 `narration`，字幕不得被朗读替代文本覆盖。
 - ❌ ChatTTS 用 CLI 模式（`chattts_cli.py`）批量生成——重复加载模型必超时，必须用 `chattts_batch.py`
 - ❌ Node.js 调用 Python 时未设 `PYTHONPATH: "/Users/sunzhenchao/ChatTTS"`（否则 ModuleNotFoundError）
 - ❌ 生成 TTS 前未先单句验证 ChatTTS 可用性
@@ -541,26 +535,12 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 
 ---
 
-## Effect 库（按语义选用，主要用于 `tech-mint`；`kurzgesagt`/`vox` 见对应模板）
+## Effect 选型
 
-| Effect | 类型 | 适用语义 | 视觉手法 |
-|---|---|---|---|
-| `CognitiveTrapEffect` | 内容型 | 看似简单/实为陷阱 | 汉字裂开→警示环+闪电 |
-| `UserReactionsEffect` | 内容型 | 用户真实反馈 | 人头+4个错峰气泡 |
-| `MindsetRulersEffect` | 内容型 | 二元对立 | 两条进度尺+巨大≠ |
-| `PriorityDownweightEffect` | 内容型 | 本该优先→被降权 | 卡片从顶拖底，金→红 |
-| `PiggyBankEffect` | 内容型 | 体验漏洞 | 存钱罐进绿币漏红币 |
-| `GoldenQuoteEffect` | 内容型 | 金句收尾 | 金边卡片逐行点亮 |
-| `WordArithmetic` | 内容型 | 反直觉等式 | 逐token浮现 |
-| `ModalIslands` | 内容型 | 多模态隔阂 | 三色块+断裂虚线 |
-| `PunWordSplit` | 内容型 | 一词多义 | 汉字裂开两半 |
-| `WallHeader` | 锚点型 | 跨场景锚点（仅标题） | 数字chip+标签挂顶 |
-| `OutroRecapEffect` | 收束型 | 片尾三步回顾 / 金句署名 | 编号胶囊错峰弹入+横线收口+金句呼吸+出处行 |
+组件清单、7 大语义分类（概念认知 / 结构机制 / 对比权衡 / 数据趋势 / 时间过程 / 场景故事 / 总结结论）、
+三型规则（锚点型 / 内容型 / 收束型）、逐镜决策树——**全部见 `references/effect-selection.md`**。
 
-> **类型规则**：
-> - **锚点型**：仅显示标题/编号，信息量低。**只能用于 ≤8s 的过渡/挂顶场景**，或作为「内容型 Effect 的顶部标题」组合使用
-> - **内容型**：承载数据/对比/流程/枚举等可视化。**K 要素且 >8s 的知识场景必须用内容型**
-> - 若已有 Effect 都无法兑现 subtitle 的信息密度，**新建专用 Effect**（命名 `{sceneId}-{语义}.tsx`），不要硬套锚点型凑数
+本文件不维护组件名清单，避免两处不同步；Step2 选型、Step3 路由、Step4 写组件前都回该文件查。
 
 ---
 

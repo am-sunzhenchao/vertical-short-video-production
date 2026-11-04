@@ -222,8 +222,7 @@ export const MyComposition: React.FC = () => {
     {
       "id": "S01",
       "title": "场景标题（人读，不渲染）",
-      "subtitle": "画面字幕，含英文原词",
-      "narration": "TTS朗读稿，英文术语替换中文，内容与subtitle完全一致",
+      "subtitle": "在 SKILL.md 中声明脚本，用 uvx ruff 检查代码，版本锁定 9.0.0。",
       "durationSec": 12.5,
       "shot_type": "effect",
       "effect": "MyEffect"
@@ -231,13 +230,12 @@ export const MyComposition: React.FC = () => {
     {
       "id": "S02",
       "title": "多段场景",
-      "subtitle": "完整字幕全文",
-      "narration": "TTS朗读稿",
+      "subtitle": "先声明脚本。再锁定版本 9.0.0。",
       "shot_type": "infographic",
       "asset": "scenes/my-video/shots/S02.png",
       "subtitleSegments": [
-        { "text": "第一句话。", "startSec": 0 },
-        { "text": "第二句话，TTS后回写真实startSec。", "startSec": 5.2 }
+        { "text": "先声明脚本。", "startSec": 0 },
+        { "text": "再锁定版本 9.0.0。", "startSec": 5.2 }
       ],
       "durationSec": 15.0,
       "effect": "ImageShot"
@@ -245,6 +243,10 @@ export const MyComposition: React.FC = () => {
   ]
 }
 ```
+
+> `subtitle` 是必填正文，保留英文术语、命令、文件名、数字和版本号原文。`narration` 是可选朗读覆盖，仅用户要求或确认特殊读法时提供；与正文相同则省略，不能写空字符串占位。
+> `subtitleSegments` 仅多段对齐时生成且至少包含两段；只有一段时省略分段字段，特殊读法使用整镜 `narration`。`text` 从 `subtitle` 切分并保留原词，拼接后必须等于正文。分段特殊读法使用可选 `narration`，如用户确认版本号读法后可写 `{ "text": "版本 9.0.0。", "narration": "版本九点零点零。", "startSec": 0 }`；默认不写。多段 TTS 不使用整镜 `narration`，不要重复保存整镜朗读稿。
+> 单段 TTS 使用 `scene.narration ?? scene.subtitle ?? ""`；多段使用 `segment.narration ?? segment.text`。字幕显示 `subtitle` / `segment.text`，不显示朗读覆盖。统计和 Effect 时间轴须使用同一朗读取值规则，不能直接依赖必有 `narration`。兼容旧数据，但不自动改写已有项目。
 
 > `styleMode`（顶层，全片统一）：`tech-mint` | `kurzgesagt` | `vox`
 > `shot_type`（每镜）：`effect` | `infographic` | `chart` | `process` | `flat` | `atmosphere`
@@ -299,7 +301,7 @@ const concat = (files, out) => execFileSync("ffmpeg", ["-y", "-i", `concat:${fil
 for (const scene of data.scenes) {
   const segs = scene.subtitleSegments;
   if (segs && segs.length > 1) {
-    const parts = segs.map((s, i) => { const f = resolve(AUDIO_DIR, `${scene.id}_p${i}.mp3`); tts(s.text, f); return f; });
+    const parts = segs.map((s, i) => { const f = resolve(AUDIO_DIR, `${scene.id}_p${i}.mp3`); tts(s.narration ?? s.text, f); return f; });
     const final = resolve(AUDIO_DIR, `${scene.id}.mp3`);
     concat(parts, final);
     let offset = 0;
@@ -417,7 +419,7 @@ if (TTS_ENGINE === "chattts") {
     const style = scene.ttsStyle ?? CHATTTS_STYLE;
     const segs = scene.subtitleSegments;
     if (segs && segs.length > 1) {
-      segs.forEach((s, i) => jobs.push({ text: s.text, output: resolve(AUDIO_DIR, `${scene.id}_p${i}.mp3`), style }));
+      segs.forEach((s, i) => jobs.push({ text: s.narration ?? s.text, output: resolve(AUDIO_DIR, `${scene.id}_p${i}.mp3`), style }));
     } else {
       jobs.push({ text: scene.narration ?? scene.subtitle ?? "", output: resolve(AUDIO_DIR, `${scene.id}.mp3`), style });
     }
@@ -440,7 +442,7 @@ if (TTS_ENGINE === "chattts") {
   for (const scene of data.scenes) {
     const segs = scene.subtitleSegments;
     if (segs && segs.length > 1) {
-      const parts = segs.map((s,i)=>{const f=resolve(AUDIO_DIR,`${scene.id}_p${i}.mp3`);ttsEdge(s.text,f);return f;});
+      const parts = segs.map((s,i)=>{const f=resolve(AUDIO_DIR,`${scene.id}_p${i}.mp3`);ttsEdge(s.narration??s.text,f);return f;});
       const final = resolve(AUDIO_DIR,`${scene.id}.mp3`);
       concat(parts,final);
       let offset=0;
@@ -713,6 +715,9 @@ if (!RAW || (!SCENES && !NARR)) {
 
 const cn = (s) => (s.match(/[\u4e00-\u9fff]/g) ?? []).length;
 const eff = (s) => s.replace(/\s/g, "").length;
+const spokenText = (s) => s.subtitleSegments?.length > 1
+  ? s.subtitleSegments.map((seg) => seg.narration ?? seg.text).join("")
+  : s.narration ?? s.subtitle ?? "";
 
 // ── 原始文稿：剔除 markdown 标记与引用行 ──
 let raw = readFileSync(RAW, "utf8")
@@ -727,12 +732,13 @@ let raw = readFileSync(RAW, "utf8")
 let scenes = null, narr = "";
 if (SCENES) {
   scenes = JSON.parse(readFileSync(SCENES, "utf8")).scenes;
-  narr = scenes.map((s) => s.narration ?? s.subtitle ?? "").join("");
+  narr = scenes.map(spokenText).join("");
 } else {
   narr = readFileSync(NARR, "utf8");
 }
 
 const R = cn(raw), N = cn(narr);
+if (/[A-Za-z0-9]/.test(narr)) console.warn("[stats] 正文含英文或数字：汉字语速仅供参考，须结合混排句试读时长核对，不可单凭统计选择字幕对齐路线。");
 const ratio = (N / R) * 100;
 
 // 压缩比只报读数，不设阈值门禁（内容完整性优先，见 SKILL.md）
@@ -752,7 +758,7 @@ console.log(`- **${R - N >= 0 ? "精简" : "净增"} ${Math.abs(R - N)} 字（${
 
 if (scenes) {
   const rows = scenes.map((s) => {
-    const c = cn(s.narration ?? "");
+    const c = cn(spokenText(s));
     const d = Number(s.durationSec ?? 0);
     return { id: s.id, title: s.title ?? "", c, d, sp: d > 0 ? c / d : 0 };
   });
@@ -898,8 +904,7 @@ const lines = React.useMemo(
   "effect": "OutroRecapEffect",
   "tailSec": 2.2,
   "durationSec": 7.87,
-  "subtitle": "回顾一下：第一步、第二步、第三步。金句收尾。",
-  "narration": "回顾一下：第一步、第二步、第三步。金句收尾。"
+  "subtitle": "回顾一下：第一步、第二步、第三步。金句收尾。"
 }
 ```
 ## 20. `scripts/check-draft-sync.mjs`（草稿一致性机械门禁 · Step3/5 开工前必跑）
@@ -922,11 +927,13 @@ let scenesPath = arg("--scenes") ?? resolve(__dirname, "../public/scenes");
 
 if (!existsSync(DRAFT)) { console.log(`[check-draft-sync] 未找到 ${DRAFT}，跳过（无草稿可校验）`); process.exit(0); }
 if (!existsSync(scenesPath)) { console.log(`[check-draft-sync] 未找到 scenes 目录，跳过`); process.exit(0); }
-if (readdirSync(scenesPath).every(f => !f.endsWith(".json"))) {
-  const sub = readdirSync(scenesPath).find(d => existsSync(resolve(scenesPath, d, "scenes.json")));
-  if (sub) scenesPath = resolve(scenesPath, sub, "scenes.json"); else { console.log("[check-draft-sync] 未找到 scenes.json，跳过"); process.exit(0); }
-} else {
-  scenesPath = resolve(scenesPath, readdirSync(scenesPath).find(f => f.endsWith(".json")));
+if (!scenesPath.endsWith(".json")) {
+  if (readdirSync(scenesPath).every(f => !f.endsWith(".json"))) {
+    const sub = readdirSync(scenesPath).find(d => existsSync(resolve(scenesPath, d, "scenes.json")));
+    if (sub) scenesPath = resolve(scenesPath, sub, "scenes.json"); else { console.log("[check-draft-sync] 未找到 scenes.json，跳过"); process.exit(0); }
+  } else {
+    scenesPath = resolve(scenesPath, readdirSync(scenesPath).find(f => f.endsWith(".json")));
+  }
 }
 
 const review = readFileSync(DRAFT, "utf8");
@@ -937,14 +944,15 @@ const draftMap = {};
 for (let i = 1; i < blocks.length; i += 2) {
   const sid = "S" + blocks[i].padStart(2, "0");
   const m = blocks[i + 1].match(/^> (.+)$/m);
-  if (m) draftMap[sid] = m[1].trim();
+  if (m) draftMap[sid] = m[1].replace(/^旁白[：:]\s*/, "").trim();
 }
 
 const diffs = [];
 for (const scene of data.scenes) {
   const draft = draftMap[scene.id];
-  if (!draft) continue;
-  if (draft !== scene.subtitle && draft !== scene.narration) diffs.push(scene.id);
+  const subtitle = scene.subtitle ?? scene.narration ?? "";
+  const segs = scene.subtitleSegments;
+  if (!draft || draft !== subtitle || (segs?.length > 0 && segs.map(s => s.text).join("") !== subtitle)) diffs.push(scene.id);
 }
 
 if (diffs.length) {
@@ -952,7 +960,7 @@ if (diffs.length) {
   console.error(`[check-draft-sync] draft-review.md 已被修改。请重新读取最新草稿并同步 scenes.json 后再继续。`);
   for (const id of diffs) {
     const scene = data.scenes.find(s => s.id === id);
-    console.error(`  ${id}\n    draft : ${draftMap[id]}\n    当前  : ${scene.subtitle}`);
+    console.error(`  ${id}\n    draft : ${draftMap[id]}\n    当前  : ${scene.subtitle ?? scene.narration ?? ""}\n    分段  : ${scene.subtitleSegments?.map(s => s.text).join("") ?? "无"}`);
   }
   process.exit(1);
 }
@@ -962,7 +970,8 @@ console.log(`[check-draft-sync] ✅ ${data.scenes.length} 镜全部与 draft-rev
 > **用法**：每个新项目把它拷进 `scripts/`；Step3/Step5 开工前先跑 `node scripts/check-draft-sync.mjs`。
 > **设计要点**：
 > - 草稿不存在（Step2 前）或 scenes.json 未生成时静默跳过，不阻塞早期流程
-> - 比对的是草稿中每个 `**S{nn}｜标题**` 块下的第一条 `> ` 引用行（即该镜旁白全文）
+> - 比对的是草稿中每个 `**S{nn}｜标题**` 块下的第一条 `> ` 引用行（即该镜正文，允许 `旁白：` 前缀）与 `subtitle`；旧数据缺 `subtitle` 时回退 `narration`
+> - 分段 `text` 拼接必须等于正文，不能由朗读覆盖文本替代；`narration` 的发音调整另行核对，不得用它匹配草稿来掩盖字幕漂移
 > - 只要不一致就 `exit 1`，把"忘记重读草稿"从静默错误变成显式失败
 
 ## 21. `scripts/tts-single.mjs`（单场景重新生成 · Step5 旁白修改后使用）
@@ -1008,7 +1017,10 @@ if (!existsSync(AUDIO_DIR)) mkdirSync(AUDIO_DIR, { recursive: true });
 
 // ── 1. TTS 生成（绝对路径，防 os.chdir 副作用）──
 const outAbs  = resolve(AUDIO_DIR, `${sceneId}.mp3`);
-const jobs    = [{ text: scene.narration ?? scene.subtitle ?? "", output: outAbs, style: scene.ttsStyle ?? CHATTTS_STYLE }];
+const segs = scene.subtitleSegments;
+const jobs = segs?.length > 1
+  ? segs.map((seg, i) => ({ text: seg.narration ?? seg.text, output: resolve(AUDIO_DIR, `${sceneId}_p${i}.mp3`), style: scene.ttsStyle ?? CHATTTS_STYLE }))
+  : [{ text: scene.narration ?? scene.subtitle ?? "", output: outAbs, style: scene.ttsStyle ?? CHATTTS_STYLE }];
 const jobFile = resolve(tmpdir(), `tts_single_${Date.now()}.json`);
 writeFileSync(jobFile, JSON.stringify(jobs));
 
@@ -1019,11 +1031,22 @@ const r = spawnSync(pyArgs[0], [...pyArgs.slice(1), CHATTTS_BATCH, "--jobs", job
 if (r.stdout) process.stdout.write(r.stdout);
 if (r.error || r.status !== 0) { console.error("TTS 失败:", r.stderr); process.exit(1); }
 
+const dur = (f) => Number(execFileSync("/opt/homebrew/bin/ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", f], { encoding: "utf8" }).trim());
+if (segs?.length > 1) {
+  execFileSync("ffmpeg", ["-y", "-i", `concat:${jobs.map((job) => job.output).join("|")}`, "-acodec", "copy", outAbs], { timeout: 10000 });
+  let offset = 0;
+  jobs.forEach((job, i) => {
+    segs[i].startSec = Number(offset.toFixed(2));
+    offset += dur(job.output);
+  });
+}
+
 // ── 2. 可选降速（--slow，atempo=0.9，开场镜头专用）──
 if (doSlow) {
   const tmp = outAbs.replace(".mp3", "_slow.mp3");
   execFileSync("ffmpeg", ["-y", "-i", outAbs, "-af", "atempo=0.9", "-ar", "44100", tmp, "-loglevel", "error"]);
   execFileSync("mv", [tmp, outAbs]);
+  if (segs?.length > 1) segs.forEach((seg) => { seg.startSec = Number((seg.startSec / 0.9).toFixed(2)); });
   console.log(`[tts-single] 已降速 0.9x`);
 }
 
@@ -1034,8 +1057,6 @@ execFileSync("mv", [norm, outAbs]);
 console.log(`[tts-single] 已归一化 -16.60 LUFS`);
 
 // ── 4. 同步时长 ──
-const dur = (f) => Number(execFileSync("/opt/homebrew/bin/ffprobe", ["-v","error","-show_entries","format=duration",
-  "-of","default=noprint_wrappers=1:nokey=1", f], { encoding: "utf8" }).trim());
 const audio = dur(outAbs);
 const tail  = Number(scene.tailSec ?? 0);
 scene.durationSec = Number((audio + tail).toFixed(2));
