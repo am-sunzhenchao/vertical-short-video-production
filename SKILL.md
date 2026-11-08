@@ -14,53 +14,50 @@ description: Use when producing a Chinese vertical (1080×1920) narrated short v
 
 ---
 
-## 🔧 启动检查（每次激活 skill 时必须先执行）
+## 启动检查（首次验证，成功后复用）
 
-在做任何事之前，执行以下检查流程：
+ChatTTS 加载模型并试读耗时较长。已经成功使用过的语音环境复用验证记录，不在每次激活 skill、每个项目或每次生成前重复检查。
 
-### 1. 读取 ChatTTS 配置
+### 1. 读取配置与验证记录
 
-读取 `~/.claude/skills/vertical-short-video-production/chattts/config.json`：
+使用本次加载的 skill 目录中的 `chattts/config.json`，不要同时检查 `~/.claude/skills` 和 `~/.codeflicker/skills` 两套路径；软链接指向同一目录时共用记录。
 
-- **文件存在且 `chatts_root` 有效**（目录存在 + 包含 `ChatTTS/` 子目录）→ 直接进入正式流程
-- **文件不存在或路径无效** → 执行下方「首次配置引导」
+- 读取配置中的 `chatts_root` 和可选的 `validation` 对象。
+- `validation.status` 为 `passed`，且记录中的 `chatts_root`、`python_command`、`tts_style` 与本次实际使用配置相同 → 直接进入正式流程；不重复探测目录、音色、依赖，不运行测试 TTS，也不要求用户再次确认环境。
+- 验证记录跨会话、跨项目复用，不因时间流逝自动过期。每次仅比较配置值，不为判断缓存有效性加载模型、导入 PyTorch 或扫描环境。
+- 只有配置不存在、记录缺失或损坏、相关配置变更、用户明确要求重验/告知环境变更，或实际 ChatTTS 生成出现环境故障时，才进入首次检查或恢复流程。
+- `validation` 只缓存语音环境，不豁免草稿同步、字幕对齐、音量归一化或全局浏览器检查。混排文本的发音质量属于内容试读，不是环境复验；需要时仍按 Step5 检查。
 
-### 2. 首次配置引导
+### 2. 首次检查与配置引导
 
+没有有效记录时，检查 `chatts_root` 是否包含 `ChatTTS/`、`speakers/` 和 `speakers/3_gentle_female_v2.txt`。配置缺失或路径无效时，再请用户提供安装目录，并说明具体缺失项。
+
+配置写入时保留其他字段。仅检查目录/音色存在不能将环境标记为 `passed`；草稿阶段可以继续，不为建立缓存提前加载模型。
+
+首次配置或音色发生变更时，按需检查 `speakers/04_jsjs_male_seed222.txt`；缺失时使用当前 skill 目录下的 `chattts/sync_speakers.py` 同步。缓存命中时不重复检查 Demo 音色。
+
+### 3. 保存成功记录与异常恢复
+
+在 Step5 首次单句试读成功，或已有一次同配置的真实 ChatTTS 生成成功后，确认进程退出码为 0、结果报告成功，且输出音频非空、可被 ffprobe 解析为时长大于 0 的音轨，再将记录合并写入同一 `chattts/config.json`：
+
+```json
+{
+  "validation": {
+    "status": "passed",
+    "chatts_root": "/实际/ChatTTS/绝对路径",
+    "python_command": "arch -arm64 python3",
+    "tts_style": "gentle_female",
+    "verified_at": "ISO-8601 时间",
+    "verified_by": "single-test 或 successful-generation"
+  }
+}
 ```
-ChatTTS 未配置或路径无效。
 
-请提供您本地 ChatTTS 的安装目录（即包含 ChatTTS/ 子目录和 speakers/ 目录的根目录）。
-示例：/Users/yourname/ChatTTS
-```
-
-用户提供路径后，执行验证：
-
-```python
-# 验证条件（三项全过才写入）
-os.path.isdir(f"{path}/ChatTTS")        # ChatTTS 模块存在
-os.path.isdir(f"{path}/speakers")       # speakers 目录存在
-os.path.isfile(f"{path}/speakers/3_gentle_female_v2.txt")  # 基础音色文件存在
-```
-
-- **验证通过** → 写入 `chattts/config.json`，提示「✅ ChatTTS 配置成功，路径已保存」，继续正式流程
-- **验证失败** → 告知具体缺失项，请用户检查后重新提供路径
-
-### 3. 验证通过后同步检查
-
-config.json 写入后，还需确认 Demo 音色 speaker 文件是否已同步：
-
-```bash
-ls {chatts_root}/speakers/04_jsjs_male_seed222.txt 2>/dev/null
-```
-
-若不存在，提示：
-```
-⚠️  Demo 音色文件未同步到 ChatTTS/speakers/。
-请运行以下命令一键同步（skill 内已内置所有 speaker 文件，无需额外下载）：
-
-python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.py
-```
+- 保留配置中的 `chatts_root` 和其他字段，采用临时文件替换的原子写入方式；不保存音频内容、密钥或环境变量全集。
+- 历史成功仅在存在可核对的同配置成功记录与有效音频时可迁移；用户说曾用过、或目录存在，本身不等于验证成功。没有证据时留待首次实际配音建立记录，不反复追问。
+- 模块/模型加载、音色读取、解释器或架构错误等语音环境故障发生时，先使对应记录失效，再诊断并重新验证；不要无条件循环重试。
+- 草稿不同步、文本发音不佳、输出目录权限或后续渲染失败，不自动归为语音环境故障。先处理实际原因，避免无关地重复加载模型。
+- 缓存无法写入时明确说明后续无法跨会话复用；本会话已验证的结果仍可复用，不因写入失败再次试读。
 
 ---
 
@@ -365,7 +362,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - [ ] **按 Step2「语速极差」判定选路**（见文稿压缩比统计）：
   - 极差 ≤ 1.0 字/秒 → **单段 TTS**（每 scene 整段一次调用，韵律自然）+ 字幕按汉字数比例分配时间
   - 极差 > 1.0 字/秒 → **多段 TTS**（按 `subtitleSegments` 逐句生成）+ ffmpeg concat + `startSec` 回写
-- [ ] **运行前先验证 ChatTTS 可用**：`PYTHONPATH=/Users/sunzhenchao/ChatTTS arch -arm64 python3 /Users/sunzhenchao/ChatTTS/chattts_cli.py --text "测试" --output /tmp/t.mp3 --style gentle_female --skip-refine --json-output`，确认输出 JSON 后再批量生成
+- [ ] **按启动检查的验证记录决定是否试读**：同配置 `validation.status = passed` 时直接批量生成，不重复运行测试 TTS。只有首次无有效记录或环境恢复时，在此阶段执行单句试读：使用配置中的实际 `chatts_root`、解释器和音色，输出到唯一临时音频路径；确认退出码为 0、结果成功且 ffprobe 检测到有效音轨后保存验证记录。真实生成成功也可建立记录；环境故障使记录失效，诊断后再验证。缓存命中不免除混排术语的按需发音试读。
 - [ ] **ChatTTS 批处理模式**（默认）：`node scripts/tts.mjs`
   - 内部调用 `chattts_batch.py`，**模型只加载一次**，所有 scene 顺序生成，避免 CLI 模式每次重新加载导致超时
   - 每个 scene 可在 `scenes.json` 中设置 `ttsStyle` 字段指定独立风格；不设则使用默认风格
@@ -512,7 +509,7 @@ python3 ~/.claude/skills/vertical-short-video-production/chattts/sync_speakers.p
 - `narration` 仅作为用户确认的发音覆盖，不改变 `subtitle` 的含义；两者相同则省略 `narration`，不写空字符串。分段同样使用 `text` 与可选 `narration`，字幕不得被朗读替代文本覆盖。
 - ❌ ChatTTS 用 CLI 模式（`chattts_cli.py`）批量生成——重复加载模型必超时，必须用 `chattts_batch.py`
 - ❌ Node.js 调用 Python 时未设 `PYTHONPATH: "/Users/sunzhenchao/ChatTTS"`（否则 ModuleNotFoundError）
-- ❌ 生成 TTS 前未先单句验证 ChatTTS 可用性
+- 未命中有效验证记录时，不得跳过首次 ChatTTS 可用性验证；缓存命中时不重复单句环境试读，按需检查混排文本发音。
 - ❌ TTS 重新生成后未同步更新 scenes.json：① `sync-durations.mjs` 更新 durationSec；② ffprobe 重算各 part 时长回写 startSec（两步缺一不可）
 - ❌ TTS 后未做音量归一化（全部 MP3 用 ffmpeg loudnorm 归一化到 -16.60 LUFS）
 - ❌ 第一个 scene 音频未做降速处理（全量 TTS 完成后必须对 S01 执行 `atempo=0.9` 降速 + 重新归一化 + sync-durations）

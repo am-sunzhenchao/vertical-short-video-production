@@ -1,2 +1,5 @@
 node_modules/
 .DS_Store
+/storyboard-prompt-generation.local.md
+.idea/
+chattts/__pycache__/

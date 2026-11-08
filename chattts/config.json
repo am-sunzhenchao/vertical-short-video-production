@@ -1,4 +1,12 @@
 {
   "_comment": "ChatTTS 本地安装配置。由 skill 启动检查自动写入，也可手动修改。",
-  "chatts_root": "/Users/sunzhenchao/ChatTTS"
+  "chatts_root": "/Users/sunzhenchao/ChatTTS",
+  "validation": {
+    "status": "passed",
+    "chatts_root": "/Users/sunzhenchao/ChatTTS",
+    "python_command": "arch -arm64 python3",
+    "tts_style": "gentle_female",
+    "verified_at": "2026-11-08T06:27:12.492Z",
+    "verified_by": "single-test"
+  }
 }
