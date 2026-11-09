@@ -1067,3 +1067,16 @@ console.log(`[tts-single] ${sceneId}: ${audio.toFixed(2)}s → durationSec=${sce
 > **package.json 加一条**：`"tts-single": "node scripts/tts-single.mjs"`
 > **S01 开场标准操作**：`node scripts/tts-single.mjs --scene S01 --slow`（生成 + 降速 + 归一化 + sync 一步完成）
 
+## 22. ChatTTS 环境排障（仅在真实报错时查）
+
+> 正常流程不需要预读本节。出现下面三类报错再对照处理，不要以此为理由提前探测环境。
+
+| 现象 | 根因 | 处理 |
+|---|---|---|
+| `ETIMEDOUT` / 批量生成必超时 | 每次 `execFileSync` 调 `chattts_cli.py` 都会重新加载模型（~45s），多 scene 累加必超时 | **必须走批处理 `chattts_batch.py`**（§10），模型只加载一次；超时上限设 `1200_000ms` |
+| `ModuleNotFoundError: No module named 'ChatTTS'` | Node 调 Python 时未传 `PYTHONPATH` | `env: { ...process.env, PYTHONPATH: <config.json 的 chatts_root> }`，模板 §10/§21 已内置 |
+| PyTorch arm64 模型加载失败 / 架构不匹配 | Mac Apple Silicon 未用 arm64 解释器 | 解释器固定 `arch -arm64 python3`，见 config.json 的 `python_command` |
+| 输出 mp3 跑到 ChatTTS 目录下 | `chattts_batch.py` 内部 `os.chdir(CHATTS_ROOT)`，相对路径失效 | job 里的 `output` 用 `os.path.abspath()` / `path.resolve()` 绝对路径，§21 已内置 |
+
+排查顺序：先看退出码与 stderr，再判断是否属于语音环境故障。草稿不同步、发音不佳、目录权限、渲染失败都不算环境故障，不要借此重新加载模型。
+
