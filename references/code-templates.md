@@ -247,75 +247,16 @@ export const MyComposition: React.FC = () => {
 > `subtitle` 是必填正文，保留英文术语、命令、文件名、数字和版本号原文。`narration` 是可选朗读覆盖，仅用户要求或确认特殊读法时提供；与正文相同则省略，不能写空字符串占位。
 > `subtitleSegments` 仅多段对齐时生成且至少包含两段；只有一段时省略分段字段，特殊读法使用整镜 `narration`。`text` 从 `subtitle` 切分并保留原词，拼接后必须等于正文。分段特殊读法使用可选 `narration`，如用户确认版本号读法后可写 `{ "text": "版本 9.0.0。", "narration": "版本九点零点零。", "startSec": 0 }`；默认不写。多段 TTS 不使用整镜 `narration`，不要重复保存整镜朗读稿。
 > 单段 TTS 使用 `scene.narration ?? scene.subtitle ?? ""`；多段使用 `segment.narration ?? segment.text`。字幕显示 `subtitle` / `segment.text`，不显示朗读覆盖。统计和 Effect 时间轴须使用同一朗读取值规则，不能直接依赖必有 `narration`。兼容旧数据，但不自动改写已有项目。
+> **多段镜头的 `subtitle` 是派生字段**：由 `sync-durations.mjs` / `tts.mjs` 写回时自动 `subtitle = subtitleSegments.map(s => s.text).join("")` 重新生成。修改文案只改 `subtitleSegments`，禁止手动同步 `subtitle`（双写必然漂移）。
+> **`tailSec` 约束**：仅最后一镜（Outro）可取 2.0~2.5s；其余镜头 `tailSec` ≤ 0.2s（统一写 `0.2`）。
 
 > `styleMode`（顶层，全片统一）：`tech-mint` | `kurzgesagt` | `vox`
 > `shot_type`（每镜）：`effect` | `infographic` | `chart` | `process` | `flat` | `atmosphere`
 > `asset`：外部生图/信息图产物（PNG）路径，`shot_type` 非 `effect` 时用 `ImageShot` 组件（objectFit: contain）承载
 
-## 7. scripts/tts.mjs
+## 7. scripts/tts.mjs（旧 CLI 版 · 已废弃）
 
-```js
-import { execFileSync } from "child_process";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SLUG = "my-video"; // ← 改这里
-const SCENES_PATH = resolve(__dirname, `../public/scenes/${SLUG}/scenes.json`);
-const AUDIO_DIR = resolve(__dirname, `../public/scenes/${SLUG}/audio`);
-
-// ── TTS Engine Config ──
-// Set TTS_ENGINE="chattts" or "edge" (default: "chattts")
-const TTS_ENGINE = process.env.TTS_ENGINE ?? "chattts";
-const VOICE = "zh-CN-YunxiNeural";
-const RATE = "+0%";
-const CHATTTS_CLI = "/Users/sunzhenchao/ChatTTS/chattts_cli.py";
-const CHATTTS_STYLE = process.env.CHATTTS_STYLE ?? "gentle_female";
-const CHATTTS_PYTHON = process.env.CHATTTS_PYTHON ?? "arch -arm64 python3";
-// ChatTTS per-scene generation is slow (~8s audio per 50s), so use longer timeout
-const CHATTTS_TIMEOUT = 180_000;
-
-if (!existsSync(AUDIO_DIR)) mkdirSync(AUDIO_DIR, { recursive: true });
-const data = JSON.parse(readFileSync(SCENES_PATH, "utf8"));
-
-const ttsEdge = (text, out) => execFileSync("python3", ["-m", "edge_tts", "--voice", VOICE, "--rate", RATE, "--text", text, "--write-media", out], { timeout: 30000 });
-
-const ttsChatTTS = (text, out) => {
-  const pyArgs = CHATTTS_PYTHON.split(" ");
-  const cliArgs = [CHATTTS_CLI, "--text", text, "--output", out, "--style", CHATTTS_STYLE, "--skip-refine", "--json-output"];
-  const raw = execFileSync(pyArgs[0], [...pyArgs.slice(1), ...cliArgs], { timeout: CHATTTS_TIMEOUT, encoding: "utf8" });
-  try {
-    const res = JSON.parse(raw.trim());
-    return res;
-  } catch {
-    return { output: out, duration: 0 };
-  }
-};
-
-const tts = TTS_ENGINE === "chattts" ? ttsChatTTS : ttsEdge;
-const FFPROBE = "/opt/homebrew/bin/ffprobe";
-const dur = (f) => Number(execFileSync(FFPROBE, ["-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1", f], { encoding: "utf8" }).trim());
-const concat = (files, out) => execFileSync("ffmpeg", ["-y", "-i", `concat:${files.join("|")}`, "-acodec", "copy", out], { timeout: 10000 });
-
-for (const scene of data.scenes) {
-  const segs = scene.subtitleSegments;
-  if (segs && segs.length > 1) {
-    const parts = segs.map((s, i) => { const f = resolve(AUDIO_DIR, `${scene.id}_p${i}.mp3`); tts(s.narration ?? s.text, f); return f; });
-    const final = resolve(AUDIO_DIR, `${scene.id}.mp3`);
-    concat(parts, final);
-    let offset = 0;
-    parts.forEach((f, i) => { segs[i].startSec = Number(offset.toFixed(2)); offset += dur(f); });
-    console.log(`${scene.id}: ${dur(final).toFixed(2)}s (${segs.length} parts)`);
-  } else {
-    const out = resolve(AUDIO_DIR, `${scene.id}.mp3`);
-    tts(scene.narration ?? scene.subtitle ?? "", out);
-    console.log(`${scene.id}: ${dur(out).toFixed(2)}s`);
-  }
-}
-writeFileSync(SCENES_PATH, JSON.stringify(data, null, 2), "utf8");
-console.log(`TTS done (engine: ${TTS_ENGINE}). startSec updated.`);
-```
+> **已废弃**：旧版逐镜调用 ChatTTS 安装目录下的 `chattts_cli.py`，每镜重新加载模型（~45s）必超时，且硬编码机器路径。TTS 一律使用 §10 批处理版（ChatTTS 批量 + Edge-TTS 备用均已内置）。本节仅保留编号防引用断链。
 
 ## 8. scripts/sync-durations.mjs
 
@@ -350,6 +291,8 @@ console.log(`\nTotal: ${total.toFixed(2)}s (${Math.round(total * 25)} frames)`);
 
 ## 9. scripts/render-cover.mjs
 
+> **仅 Cover 封面模块使用**（SKILL.md Step 6）：封面不随视频制作同步生成，仅操作者明确要求做封面时才创建本脚本。视频素材的 SVG→PNG 转换用 skill 的 `scripts/svg2png.mjs`，不走本脚本。
+
 ```js
 import { Resvg } from "@resvg/resvg-js";
 import { readFileSync, writeFileSync } from "fs";
@@ -373,26 +316,28 @@ for (const j of jobs) {
 ## 10. `scripts/tts.mjs`（ChatTTS 批处理版，推荐）
 
 > 核心改进：所有 scene 的 TTS 任务收集后**一次性**传给 `chattts_batch.py`，模型只加载一次，避免超时。
+>
+> **路径锚定**：实例化时把 `SKILL_DIR` 替换为本次加载的 skill 根目录——`chattts_batch.py` / `config.json` / `voice_presets.json` / `speakers/` 一律从 skill 目录读取，不复制进项目、不在项目内另建语音配置。jobs/result 中间文件与音频产物落项目 `AUDIO_DIR`，不写系统 /tmp。
 
 ```js
 import { execFileSync, spawnSync } from "child_process";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
-import { tmpdir } from "os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SLUG = "my-video"; // ← 改这里
 const SCENES_PATH = resolve(__dirname, `../public/scenes/${SLUG}/scenes.json`);
 const AUDIO_DIR = resolve(__dirname, `../public/scenes/${SLUG}/audio`);
+const SKILL_DIR = "<SKILL_DIR>"; // ← 改这里：本次加载的 skill 根目录绝对路径
 
 const TTS_ENGINE = process.env.TTS_ENGINE ?? "chattts";
 const VOICE = "zh-CN-YunxiNeural";
 const RATE = "+0%";
-const CHATTTS_BATCH = "/Users/sunzhenchao/.claude/skills/vertical-short-video-production/chattts/chattts_batch.py";
+const CHATTTS_BATCH = resolve(SKILL_DIR, "chattts/chattts_batch.py");
 const CHATTTS_STYLE = process.env.CHATTTS_STYLE ?? "gentle_female";
 const CHATTTS_PYTHON = process.env.CHATTTS_PYTHON ?? "arch -arm64 python3";
-const PYTHONPATH = JSON.parse(readFileSync("/Users/sunzhenchao/.claude/skills/vertical-short-video-production/chattts/config.json","utf8")).chatts_root;
+const PYTHONPATH = JSON.parse(readFileSync(resolve(SKILL_DIR, "chattts/config.json"), "utf8")).chatts_root;
 
 if (!existsSync(AUDIO_DIR)) mkdirSync(AUDIO_DIR, { recursive: true });
 const data = JSON.parse(readFileSync(SCENES_PATH, "utf8"));
@@ -402,7 +347,7 @@ const concat = (files, out) => execFileSync("ffmpeg",["-y","-i",`concat:${files.
 const ttsEdge = (text, out) => execFileSync("python3",["-m","edge_tts","--voice",VOICE,"--rate",RATE,"--text",text,"--write-media",out],{timeout:30000});
 
 function runChatTTSBatch(jobs) {
-  const jobsFile = resolve(tmpdir(), `chattts_jobs_${Date.now()}.json`);
+  const jobsFile = resolve(AUDIO_DIR, `_jobs_${Date.now()}.json`);
   writeFileSync(jobsFile, JSON.stringify(jobs));
   const pyArgs = CHATTTS_PYTHON.split(" ");
   console.log(`[chattts-batch] 启动 Python，共 ${jobs.length} 条任务...`);
@@ -459,60 +404,9 @@ writeFileSync(SCENES_PATH, JSON.stringify(data,null,2),"utf8");
 console.log(`\nTTS done (engine: ${TTS_ENGINE}).`);
 ```
 
-## 11. `/Users/sunzhenchao/ChatTTS/chattts_batch.py`（一次性批处理脚本）
+## 11.（已废弃）chattts_batch.py 旧落位方案
 
-> 放在 ChatTTS 根目录，由 `tts.mjs` 调用。接受 JSON 任务列表，模型加载一次，逐条生成。
-
-```python
-#!/usr/bin/env python3
-import os, sys, json, argparse
-os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-CHATTS_ROOT = os.path.dirname(os.path.abspath(__file__))
-SPEAKERS_DIR = os.path.join(CHATTS_ROOT, "speakers")
-sys.path.insert(0, CHATTS_ROOT)
-os.chdir(CHATTS_ROOT)
-import ChatTTS
-from tools.audio import pcm_arr_to_mp3_view
-
-STYLE_PRESETS = {
-    "calm_male":            {"speaker_file":"1_calm_male_v2.txt",           "temperature":0.1,"top_P":0.3,"top_K":5, "repetition_penalty":1.1},
-    "energetic_male":       {"speaker_file":"2_energetic_male_v2.txt",      "temperature":0.5,"top_P":0.7,"top_K":20,"repetition_penalty":1.05},
-    "gentle_female":        {"speaker_file":"3_gentle_female_v2.txt",       "temperature":0.3,"top_P":0.5,"top_K":10,"repetition_penalty":1.05},
-    "gentle_male":          {"speaker_file":"3_gentle_male_v2.txt",         "temperature":0.3,"top_P":0.5,"top_K":10,"repetition_penalty":1.05},
-    "deep_voice":           {"speaker_file":"4_deep_voice_v2.txt",          "temperature":0.1,"top_P":0.3,"top_K":5, "repetition_penalty":1.3},
-    "deep_male":            {"speaker_file":"4_deep_male_v2.txt",           "temperature":0.1,"top_P":0.3,"top_K":5, "repetition_penalty":1.3},
-    "natural_conversational":{"speaker_file":"5_natural_conversational_v2.txt","temperature":0.3,"top_P":0.5,"top_K":10,"repetition_penalty":1.05},
-}
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--jobs", required=True)
-    args = parser.parse_args()
-    with open(args.jobs) as f: jobs = json.load(f)
-    print(f"[batch] Loading ChatTTS model...", flush=True)
-    chat = ChatTTS.Chat()
-    chat.load(source="local", compile=False)
-    print(f"[batch] Model loaded. Processing {len(jobs)} jobs.", flush=True)
-    results = []
-    for i, job in enumerate(jobs):
-        preset = STYLE_PRESETS.get(job.get("style","gentle_female"), STYLE_PRESETS["gentle_female"])
-        with open(os.path.join(SPEAKERS_DIR, preset["speaker_file"])) as f: spk_emb = f.read().strip()
-        try:
-            wavs = chat.infer([job["text"]], skip_refine_text=True,
-                params_infer_code=ChatTTS.Chat.InferCodeParams(spk_emb=spk_emb,
-                    temperature=preset["temperature"],top_P=preset["top_P"],top_K=preset["top_K"],
-                    repetition_penalty=preset["repetition_penalty"]))
-            os.makedirs(os.path.dirname(job["output"]), exist_ok=True)
-            with open(job["output"],"wb") as f: f.write(pcm_arr_to_mp3_view(wavs[0]))
-            print(json.dumps({"i":i,"output":job["output"],"style":job.get("style"),"ok":True}),flush=True)
-            results.append({"i":i,"ok":True})
-        except Exception as e:
-            print(json.dumps({"i":i,"error":str(e)}),flush=True)
-            results.append({"i":i,"ok":False})
-    print(f"[batch] Done. {sum(r['ok'] for r in results)}/{len(results)} succeeded.",flush=True)
-
-if __name__ == "__main__": main()
-```
+> **已废弃**：旧方案把批处理脚本副本放进 ChatTTS 安装目录运行，副本会与 skill 内置版漂移，且文件落位工程外。现行唯一入口是 skill 目录内置的 `chattts/chattts_batch.py`（读 skill 目录 `config.json`，音色优先 skill `speakers/`），由 §10/§21 模板经 `SKILL_DIR` 锚定调用。禁止在 ChatTTS 目录放置或运行任何脚本副本。本节仅保留编号防引用断链。
 
 ## 12. ImageShot `src/effects/ImageShot.tsx`（承载外部生图/信息图产物）
 
@@ -875,12 +769,19 @@ export const MyComposition: React.FC = () => {
 
 ## 19. `tailSec` 静场留白：两处必改
 
+> **`tailSec` 取值约束**：只有最后一镜（Outro）用 2.0~2.5s 静场收束；**其余所有镜头 `tailSec` ≤ 0.2s**（统一写 `0.2`），否则镜头之间会出现明显空隙、节奏拖沓。
+> **`subtitle` 派生约束**：`subtitleSegments` 是唯一数据源，`sync-durations.mjs` / `tts.mjs` 写回时自动 `subtitle = subtitleSegments.map(s => s.text).join("")`，改文案只改分段 `text`，不手动维护 `subtitle`。
+
 **① `scripts/sync-durations.mjs`** — 否则重跑 TTS 会冲掉留白：
 
 ```js
 const a = dur(resolve(AUDIO_DIR, `${scene.id}.mp3`));
 const tail = Number(scene.tailSec ?? 0);
 scene.durationSec = Number((a + PAD + tail).toFixed(2));
+// subtitle 由分段派生，保证单一数据源、不出现两处不一致
+if (Array.isArray(scene.subtitleSegments) && scene.subtitleSegments.length) {
+  scene.subtitle = scene.subtitleSegments.map((s) => s.text).join("");
+}
 ```
 
 **② `src/<Name>/Scene.tsx`** — 字幕只在有声区间内分配，否则字幕被摊进静场、比人声慢 30~40%：
@@ -976,7 +877,7 @@ console.log(`[check-draft-sync] ✅ ${data.scenes.length} 镜全部与 draft-rev
 
 ## 21. `scripts/tts-single.mjs`（单场景重新生成 · Step5 旁白修改后使用）
 
-> 旁白局部修改时用此脚本，避免全量重跑浪费时间。内置绝对路径处理（防 `chattts_batch.py` 的 `os.chdir` 副作用）、归一化、sync-durations 三步合一。
+> 旁白局部修改时用此脚本，避免全量重跑浪费时间。内置绝对路径处理（防 `chattts_batch.py` 的 `os.chdir` 副作用）、归一化、sync-durations 三步合一。`SKILL_DIR` 替换规则与 jobs 中间文件落位同 §10。
 
 ```js
 #!/usr/bin/env node
@@ -988,18 +889,18 @@ import { execFileSync, spawnSync } from "child_process";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
-import { tmpdir } from "os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SLUG = "my-video"; // ← 改这里
 const SCENES_PATH = resolve(__dirname, `../public/scenes/${SLUG}/scenes.json`);
 const AUDIO_DIR   = resolve(__dirname, `../public/scenes/${SLUG}/audio`);
+const SKILL_DIR   = "<SKILL_DIR>"; // ← 改这里：本次加载的 skill 根目录绝对路径
 
-const CHATTTS_BATCH  = "/Users/sunzhenchao/.claude/skills/vertical-short-video-production/chattts/chattts_batch.py";
+const CHATTTS_BATCH  = resolve(SKILL_DIR, "chattts/chattts_batch.py");
 const CHATTTS_STYLE  = process.env.CHATTTS_STYLE ?? "gentle_female";
 const CHATTTS_PYTHON = process.env.CHATTTS_PYTHON ?? "arch -arm64 python3";
 const PYTHONPATH     = JSON.parse(readFileSync(
-  "/Users/sunzhenchao/.claude/skills/vertical-short-video-production/chattts/config.json", "utf8"
+  resolve(SKILL_DIR, "chattts/config.json"), "utf8"
 )).chatts_root;
 
 const args = process.argv.slice(2);
@@ -1021,7 +922,7 @@ const segs = scene.subtitleSegments;
 const jobs = segs?.length > 1
   ? segs.map((seg, i) => ({ text: seg.narration ?? seg.text, output: resolve(AUDIO_DIR, `${sceneId}_p${i}.mp3`), style: scene.ttsStyle ?? CHATTTS_STYLE }))
   : [{ text: scene.narration ?? scene.subtitle ?? "", output: outAbs, style: scene.ttsStyle ?? CHATTTS_STYLE }];
-const jobFile = resolve(tmpdir(), `tts_single_${Date.now()}.json`);
+const jobFile = resolve(AUDIO_DIR, `_jobs_single_${Date.now()}.json`);
 writeFileSync(jobFile, JSON.stringify(jobs));
 
 const pyArgs = CHATTTS_PYTHON.split(" ");
@@ -1056,9 +957,11 @@ execFileSync("ffmpeg", ["-y", "-i", outAbs, "-af", "loudnorm=I=-16.60:TP=-3.59:L
 execFileSync("mv", [norm, outAbs]);
 console.log(`[tts-single] 已归一化 -16.60 LUFS`);
 
-// ── 4. 同步时长 ──
+// ── 4. 同步时长（非最后一镜 tailSec 上限 0.2；subtitle 由分段派生）──
 const audio = dur(outAbs);
-const tail  = Number(scene.tailSec ?? 0);
+const isLast = scene === data.scenes[data.scenes.length - 1];
+const tail = isLast ? Number(scene.tailSec ?? 0) : Math.min(Number(scene.tailSec ?? 0.2), 0.2);
+if (Array.isArray(segs) && segs.length) scene.subtitle = segs.map((s) => s.text).join("");
 scene.durationSec = Number((audio + tail).toFixed(2));
 writeFileSync(SCENES_PATH, JSON.stringify(data, null, 2), "utf8");
 console.log(`[tts-single] ${sceneId}: ${audio.toFixed(2)}s → durationSec=${scene.durationSec}s ✅`);
@@ -1076,7 +979,7 @@ console.log(`[tts-single] ${sceneId}: ${audio.toFixed(2)}s → durationSec=${sce
 | `ETIMEDOUT` / 批量生成必超时 | 每次 `execFileSync` 调 `chattts_cli.py` 都会重新加载模型（~45s），多 scene 累加必超时 | **必须走批处理 `chattts_batch.py`**（§10），模型只加载一次；超时上限设 `1200_000ms` |
 | `ModuleNotFoundError: No module named 'ChatTTS'` | Node 调 Python 时未传 `PYTHONPATH` | `env: { ...process.env, PYTHONPATH: <config.json 的 chatts_root> }`，模板 §10/§21 已内置 |
 | PyTorch arm64 模型加载失败 / 架构不匹配 | Mac Apple Silicon 未用 arm64 解释器 | 解释器固定 `arch -arm64 python3`，见 config.json 的 `python_command` |
-| 输出 mp3 跑到 ChatTTS 目录下 | `chattts_batch.py` 内部 `os.chdir(CHATTS_ROOT)`，相对路径失效 | job 里的 `output` 用 `os.path.abspath()` / `path.resolve()` 绝对路径，§21 已内置 |
+| 输出 mp3 跑到 ChatTTS 目录下 | `chattts_batch.py` 内部 `os.chdir(CHATTS_ROOT)`，相对路径失效 | 模板已内置 `path.resolve()`；`chattts_batch.py` 另有 `isabs` 校验，相对路径直接报错跳过，不会写入 ChatTTS 目录 |
 
 排查顺序：先看退出码与 stderr，再判断是否属于语音环境故障。草稿不同步、发音不佳、目录权限、渲染失败都不算环境故障，不要借此重新加载模型。
 

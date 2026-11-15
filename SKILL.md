@@ -65,7 +65,7 @@ ChatTTS 加载模型并试读耗时较长。已经成功使用过的语音环境
 ## 项目规格
 
 - 平台：微信视频号 + 抖音
-- 视频：1080×1920，25fps；封面：1080×1440
+- 视频：1080×1920，25fps；封面：1080×1440（仅 Cover 封面模块按需使用，见 Step 6）
 - 栈：Remotion 4.x + ChatTTS / edge-tts + @resvg/resvg-js
 - **视觉风格模式**：`kurzgesagt`（默认.扁平矢量科普）/ `tech-mint`（·深空薄荷）/ `vox`（图表驱动解释）/ `vox-light`（图表驱动·清爽浅底）/ `doodle-note`（手绘读书笔记），Step2 按**决策树**锁定，详见 references/visual-system.md
 - TTS 引擎：ChatTTS
@@ -81,13 +81,16 @@ ChatTTS 加载模型并试读耗时较长。已经成功使用过的语音环境
 │   ├── src/<Composition>/Scene.tsx
 │   ├── src/effects/*.tsx          ← Effect 命名：{sceneId}-{EffectName}.tsx，例：S04-Sandwich.tsx
 │   │                                 **每个 scene 对应一个独立 tsx，禁止多 scene 共用同一 Effect 组件**
-│   └── scripts/tts.mjs, sync-durations.mjs, render-cover.mjs
-└── cover/标题.txt, 描述.txt, 封面v1.svg/png, 封面v2.svg/png
+│   └── scripts/tts.mjs, sync-durations.mjs
+├── 标题.txt, 描述.txt              ← Step6 默认产出（项目根）
+└── cover/封面v1.svg, 封面v2.svg    ← 可选：仅在明确要求制作封面时产出（Cover 封面模块，见 Step 6）
 ```
 
 ---
 
-## 制作流程（强约束：Step1/2 未通过不得进入 Step3）
+## 制作流程（强约束：Step1/2 未通过不得进入 Step3；试点批未通过不得全量制作）
+
+> **分批制作机制**：Step2 内容 review 通过后，先只制作**前 3 个分镜**的全部内容（素材 + 动效 + 音频，见 Step 2.5），再次 review 通过后，才开始剩余全部分镜的制作。
 
 ### Step 1 · 素材盘点（只读）
 
@@ -200,8 +203,23 @@ ChatTTS 加载模型并试读耗时较长。已经成功使用过的语音环境
 - [ ] 操作者明确说"通过/OK/开始"前，**不写一行代码**
 - [ ] **样式确认表须与草稿一起呈现**，不得在草稿通过后才单独询问
 
+### Step 2.5 · 试点分镜（前 3 镜）→ Review（强制卡点）
+
+> **为什么分批**：全片级参数（视觉密度、字幕样式、语速节奏、配色饱和度）只有真实做出几镜才能判断。先用最小成本锁定这些参数，避免 20+ 镜全部做完才发现风格不对、整片返工。
+> **范围**：草稿镜序的前 3 镜（S01–S03）。草稿总镜数 ≤ 3 时试点批即全量，本卡点与全片收尾合并执行。
+
+- [ ] **scenes.json 先只写入前 3 镜**（保留草稿全局镜号，不重编）：tts.mjs / sync-durations.mjs / check-draft-sync.mjs 均按 json 中实际存在的镜工作，天然只处理试点批；Composition 直接遍历 scenes.json，`npm run dev` 预览即只有这 3 镜
+- [ ] 对这 3 镜按 Step3 → Step4 → Step5 的完整流程执行：素材、Effect 实现、画面兑现与画面连贯性检查（仅 S01→S02→S03 相邻对）、`npx tsc --noEmit`、TTS 生成 + 归一化 + **S01 降速 0.9** + sync
+- [ ] 试点批完成标准：3 镜编译通过、音频非空且已归一化、`node scripts/check-draft-sync.mjs` 通过
+- [ ] **停下来等 review**（与 Step2 卡点同规格）：呈现 ① 前 3 镜的画面兑现核对结论 ② 每镜音频时长与语速读数 ③ 发现的问题与建议；告知操作者可 `npm run dev` 预览。默认不渲染 mp4，仅当操作者明确要求时才渲染试点段
+- [ ] review 中确认的调整（字号、节奏、语速、色板等）**固化为剩余分镜的制作约束**（写入 draft-review.md），避免第二批重蹈
+- [ ] **操作者明确说"通过/OK/继续"后**：把草稿剩余镜头按原镜号顺序追加进 scenes.json → 重跑 `node scripts/check-draft-sync.mjs`（此时为全量校验）→ 开始剩余分镜制作（Step3 → Step4 → Step5 全量 + Step5.5 片尾收束；批间衔接 S03→S04 在第二批画面连贯性检查时一并核对）
+- [ ] review 不通过 → 只修改前 3 镜相关产物后重新 review，**不得跳过试点直接批量制作后续分镜**
+
 
 ### Step 3 · 视觉素材
+
+> **分批执行**：试点批（Step2.5）只处理 S01–S03 的选型与素材；剩余分镜在试点 review 通过后按相同规则处理。
 
 - [ ] **开工前先跑 `node scripts/check-draft-sync.mjs`**：确认 scenes.json 与最新 `draft-review.md` 一致，不一致先同步（机械门禁，防止草稿已被用户修改而沿用旧版）
 - [ ] **此阶段才选 `effectName`**：逐镜按 references/effect-selection.md §3 决策树定组件。选型依据是"这一镜要用什么画面兑现旁白"，不是"手上有哪些组件可以派上用场"。
@@ -212,7 +230,7 @@ ChatTTS 加载模型并试读耗时较长。已经成功使用过的语音环境
 - [ ] **有知识点要讲的镜**：画面必须有视觉锚点，Effect 选型走 `references/effect-selection.md §2.2–2.5`（结构机制 / 对比权衡 / 数据趋势 / 时间过程）
 - [ ] **情绪共鸣镜**：色调偏暖（金色/琥珀），人物/手写/温柔光晕元素，避免冷色硬朗风格
 - [ ] SVG 内 emoji 全替换成 Unicode 符号
-- [ ] 走 render-cover.mjs 输出 PNG，目检无豆腐方块；单张/任意 SVG 用 `node <skill>/scripts/svg2png.mjs <file.svg> [宽度]`（输出同名 .png，默认宽1080，可任意目录执行）
+- [ ] SVG 素材转 PNG 统一用 `node <skill>/scripts/svg2png.mjs <file.svg> [宽度]`（输出同名 .png，默认宽1080，可任意目录执行），目检无豆腐方块；`render-cover.mjs` 仅归 Cover 封面模块使用
 
 #### shot_type 分镜路由表（每镜打标签，决定素材来源）
 
@@ -239,7 +257,9 @@ ChatTTS 加载模型并试读耗时较长。已经成功使用过的语音环境
   - Remotion 升级后若提示浏览器版本不兼容，才更新全局文件；不要删除项目 `node_modules` 后重新下载一份
 - [ ] 复制 references/code-templates.md 的模板：remotion.config.ts、StarfieldDrift、Scene.tsx、index.tsx、effects 骨架
 - [ ] 生成 scenes.json（含顶层 `styleMode`、每镜 `shot_type`、`subtitle`；仅需要不同读法时提供可选 `narration`，仅多段对齐时提供 `subtitleSegments`）
+  - **分批写入**（Step2.5）：试点批只写前 3 镜，review 通过后按草稿全局镜号追加剩余镜头
   - `subtitle` 为正文，字幕与朗读相同则省略 `narration`，不写空字符串或复制正文；单段 TTS 使用 `narration ?? subtitle`。
+  - **多段镜头的 `subtitle` 是派生字段，不手动维护**：`subtitleSegments` 是唯一数据源，`sync-durations.mjs` / `tts.mjs` 写回 scenes.json 时自动执行 `subtitle = subtitleSegments.map(s => s.text).join("")`。修改文案只改 `subtitleSegments[].text`（或 `narration`），禁止双写导致不一致。
   - `subtitleSegments` 至少包含两段，只有一段时省略并使用整镜 `narration` 处理特殊读法。`subtitleSegments[].text` 从正文切分，保留英文原词；分段 TTS 使用 `segment.narration ?? segment.text`，朗读覆盖仅保存在有差异的分段，不重复保存整镜 `narration`。字幕只显示 `text`。
   - 统计、Effect 时间轴和单场景重生成均须支持省略 `narration`；取值规则见 references/code-templates.md §6。已有项目不主动迁移。
 - [ ] **底色按 styleMode**：`tech-mint` → Effect 用所选背景色方案渐变（不用实色/transparent 走星空）；`kurzgesagt` → 单一深色块纯底、无渐变无星空；`vox` → 近黑纯底、图表铺满；`vox-light` → 所选浅底方案纯色实底（默认 `#F4F8F7`），色板集中到 `src/effects/palette.ts`，字幕转深色、渐隐遮罩同底色、禁用发光
@@ -265,6 +285,10 @@ ChatTTS 加载模型并试读耗时较长。已经成功使用过的语音环境
   - **总时长**：内容完整性优先，但需兼顾注意力与视频定位。用户指定时长时以目标为约束；未指定时按 2A 估算的区间执行。超预算按 2A 处理顺序压缩，**不得直接删核心论点**。
 
 ### Step 5 · 音频
+
+> **分批执行**：试点批（Step2.5）只生成 S01–S03 的音频（S01 降速 0.9 在此批执行）；剩余分镜在试点 review 通过后批量生成。
+
+> **路径边界**：tts.mjs / tts-single.mjs 模板中的 `SKILL_DIR` 在实例化时替换为本次加载的 skill 根目录——`chattts_batch.py`、`config.json`、`voice_presets.json`、`speakers/` 一律从 skill 目录读取，不复制进项目、不在项目内另建语音配置。jobs/result 中间文件与音频产物落项目 `public/scenes/<slug>/audio/`，不写系统 /tmp。`chatts_root`（ChatTTS 库 + 模型权重）是语音生成唯一允许引用的工程外运行时环境，同 ffmpeg 一样按环境依赖对待。
 
 - [ ] **跑 TTS 前先跑 `node scripts/check-draft-sync.mjs`**：草稿可能已在用户侧二次修改，必须校验 `subtitle` 与草稿、分段 `text` 与正文一致；有朗读覆盖时另外核对含义，避免配音与字幕错位
 - [ ] **按 Step2「语速极差」判定选路**（见文稿压缩比统计）：
@@ -297,7 +321,7 @@ ChatTTS 加载模型并试读耗时较长。已经成功使用过的语音环境
   ```bash
   node scripts/tts-single.mjs --scene S03   # 生成 + 归一化 + sync-durations 一步完成
   ```
-  > ⚠️ `chattts_batch.py` 内部执行 `os.chdir(CHATTS_ROOT)`，output 路径**必须是绝对路径**（用 `os.path.abspath()`），否则文件写到 ChatTTS 目录而非项目目录，难以排查。`tts-single.mjs` 模板已内置此处理。
+  > ⚠️ `chattts_batch.py` 内部执行 `os.chdir(CHATTS_ROOT)`，job 的 `output` **必须是绝对路径**。tts.mjs / tts-single.mjs 模板已内置 `path.resolve()`，脚本侧另有 `isabs` 校验兜底：相对路径直接报错跳过，不会写入 ChatTTS 目录。
 
 #### ⚠️ ChatTTS 环境故障
 
@@ -310,7 +334,7 @@ ChatTTS 加载模型并试读耗时较长。已经成功使用过的语音环境
 | # | 要件 | 做法 | 参数基准 |
 |---|---|---|---|
 | 1 | **Outro scene** | 全片最后追加一镜（`S{last}-OutroRecap.tsx`），内容为「N 步回顾」或「一句金句 + 出处/署名」。**禁止**把它写成新知识点 | 旁白 20–30 汉字，约 5–6s |
-| 2 | **静场留白（`tailSec`）** | Outro 的 `durationSec = 音频时长 + PAD + tailSec`；静场内画面继续呼吸（极缓 scale/translate），不静止 | `tailSec` = 2.0~2.5s |
+| 2 | **静场留白（`tailSec`）** | Outro 的 `durationSec = 音频时长 + PAD + tailSec`；静场内画面继续呼吸（极缓 scale/translate），不静止 | Outro `tailSec` = 2.0~2.5s；**非最后一镜 `tailSec` ≤ 0.2s**（统一写 0.2，避免镜头间出现明显空隙） |
 | 3 | **整片渐隐** | Composition 入口叠一层与底色同色的 `AbsoluteFill`，最后 N 帧 opacity 0→1 | `FADE_OUT_FRAMES` = 30~35 |
 
 **Outro 版式模板（三步回顾）**：三条编号胶囊错峰弹入 → 一条横线收口 → 大字金句（带呼吸）→ 底部出处行淡入。最后一条胶囊与金句加 `1 + 0.012 * Math.sin(f * 0.09)` 呼吸，避免静场段完全冻结。
@@ -324,16 +348,22 @@ ChatTTS 加载模型并试读耗时较长。已经成功使用过的语音环境
 
 **Outro Effect 的时间轴必须收在音频帧内**：最后一个元素的 `trigger + duration` ≤ `音频秒数 × fps`，静场只留给呼吸和渐隐。写完用「最后触发帧 vs 音频帧数」核对一次。
 
-### Step 6 · 发布物
+### Step 6 · 发布物（默认仅文案）
 
-- [ ] V1+V2 封面：问句 + 格式化核心内容，V2 背景与视频首帧一致，只生成svg文件，不生产png
 - [ ] 标题.txt（问句≤16字符）+ 描述.txt（≤1000字符，结尾#标签）
+
+### Cover 封面模块（可选，仅在明确要求时制作）
+
+> 封面**不随视频制作同步生成**。仅当操作者明确提出「做封面 / 生成 cover」时才执行本模块；请求可能发生在流程任何阶段（含视频已完成后的单独返场）。
+
+- [ ] V1+V2 封面：问句 + 格式化核心内容，V2 背景与视频首帧一致，只生成 svg 文件，不生成 png（1080×1440）
+- [ ] PNG 导出与模板：`render-cover.mjs`（references/code-templates.md §9）
 
 ---
 
 ## 交付边界（默认收尾，不主动越界）
 
-- **默认交付物 = Step4 项目代码 + Step5 TTS 配音 + Step6 封面/文案**。三者产出后即视为完成，向用户交付并结束。
+- **默认交付物 = Step4 项目代码 + Step5 TTS 配音 + Step6 标题/描述文案**。产出后即视为完成，向用户交付并结束。**封面（cover）不属于默认交付物**，仅操作者明确要求时按「Cover 封面模块」制作。
 - **不做关键帧渲染自检**：画面正确性靠 Step4「画面兑现检查（纯代码审查）」保证；不主动 `remotion still` 渲染帧来目视验证。
 - **编译验证用 `tsc --noEmit`，不用 `remotion still`**：每次写完 Effect 代码需确认编译通过时，使用 `npx tsc --noEmit` 做类型检查，不得以「验证编译」为由触发 `remotion still`——后者会在 `out/` 目录生成大量无用 PNG 文件，且违反上一条规则。
   ```bash
@@ -347,7 +377,7 @@ ChatTTS 加载模型并试读耗时较长。已经成功使用过的语音环境
 
 ## 否定项（直接绕开，按类分组）
 
-**说明**：本节只列各 Step 章节没有展开的红线。流程类约束（跳过 Step1/2、不跑 `check-draft-sync`、口算时长、`remotion still` 自检、styleMode 未确认就写码、未经授意渲染 mp4、项目级 Chrome 下载等）已在对应 Step 写明，不在此重复。
+**说明**：本节只列各 Step 章节没有展开的红线。流程类约束（跳过 Step1/2、跳过试点批 review 直接全量制作、不跑 `check-draft-sync`、口算时长、`remotion still` 自检、styleMode 未确认就写码、未经授意渲染 mp4、未经明确要求制作封面、项目级 Chrome 下载等）已在对应 Step 写明，不在此重复。
 
 **视觉红线**
 

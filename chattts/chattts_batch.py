@@ -64,6 +64,8 @@ def main():
         spk_emb = load_speaker(preset["speaker_file"])
 
         try:
+            if not os.path.isabs(output):
+                raise ValueError(f"output 必须是绝对路径（脚本已 chdir 至 CHATTS_ROOT，相对路径会写入 ChatTTS 目录）: {output}")
             infer_kwargs = dict(
                 skip_refine_text=preset.get("skip_refine", True),
                 params_infer_code=ChatTTS.Chat.InferCodeParams(
